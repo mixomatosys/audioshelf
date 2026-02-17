@@ -9,6 +9,7 @@ class Database {
     this.dataDir = this.getDataDirectory();
     this.pluginsFile = path.join(this.dataDir, 'plugins.json');
     this.metadataFile = path.join(this.dataDir, 'metadata.json');
+    this.projectsFile = path.join(this.dataDir, 'projects.json');
   }
 
   getDataDirectory() {
@@ -232,6 +233,126 @@ class Database {
       return stats;
     } catch (error) {
       console.error('[Database] Failed to get stats:', error);
+      return null;
+    }
+  }
+
+  // Project-related methods for Ableton integration
+
+  async saveProjects(projects) {
+    try {
+      await this.ensureDataDirectory();
+      
+      const data = {
+        projects: projects,
+        metadata: {
+          lastScan: new Date().toISOString(),
+          totalProjects: projects.length,
+          totalPluginReferences: projects.reduce((sum, p) => sum + p.vstPlugins.length, 0)
+        }
+      };
+
+      await fs.writeFile(this.projectsFile, JSON.stringify(data, null, 2));
+      console.log(`[Database] Saved ${projects.length} Ableton projects to ${this.projectsFile}`);
+      
+      return data;
+    } catch (error) {
+      console.error('[Database] Failed to save projects:', error);
+      throw error;
+    }
+  }
+
+  async loadProjects() {
+    try {
+      const fileContent = await fs.readFile(this.projectsFile, 'utf8');
+      const data = JSON.parse(fileContent);
+      
+      console.log(`[Database] Loaded ${data.projects.length} Ableton projects from ${this.projectsFile}`);
+      return data.projects;
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        console.log('[Database] No existing project database found');
+        return [];
+      } else {
+        console.error('[Database] Failed to load projects:', error);
+        throw error;
+      }
+    }
+  }
+
+  async linkProjectsToPlugins(projects, plugins) {
+    // Create a mapping of which projects use which plugins
+    const pluginUsage = {};
+    
+    // Initialize usage tracking for all plugins
+    plugins.forEach(plugin => {
+      pluginUsage[plugin.id] = [];
+    });
+
+    // Process each project
+    projects.forEach(project => {
+      project.vstPlugins.forEach(abletonPluginName => {
+        // Try to match this Ableton plugin name to a plugin in our database
+        const matchedPlugin = plugins.find(dbPlugin => 
+          dbPlugin.name.toLowerCase() === abletonPluginName.toLowerCase()
+        );
+        
+        if (matchedPlugin) {
+          // Add this project to the plugin's usage list
+          if (!pluginUsage[matchedPlugin.id]) {
+            pluginUsage[matchedPlugin.id] = [];
+          }
+          
+          pluginUsage[matchedPlugin.id].push({
+            projectName: project.name,
+            projectFile: project.fileName,
+            lastModified: project.lastModified
+          });
+        }
+      });
+    });
+
+    // Update plugins with usage information
+    const pluginsWithUsage = plugins.map(plugin => ({
+      ...plugin,
+      projectUsage: pluginUsage[plugin.id] || []
+    }));
+
+    console.log(`[Database] Linked projects to plugins. Found usage data for ${Object.values(pluginUsage).filter(usage => usage.length > 0).length} plugins`);
+    
+    return pluginsWithUsage;
+  }
+
+  async getPluginUsageStats() {
+    try {
+      const plugins = await this.loadPlugins();
+      const projects = await this.loadProjects();
+      
+      if (!plugins.length || !projects.length) {
+        return null;
+      }
+
+      // Calculate usage statistics
+      const pluginsWithUsage = plugins.filter(p => p.projectUsage && p.projectUsage.length > 0);
+      const unusedPlugins = plugins.filter(p => !p.projectUsage || p.projectUsage.length === 0);
+      
+      const stats = {
+        totalProjects: projects.length,
+        pluginsWithUsage: pluginsWithUsage.length,
+        unusedPlugins: unusedPlugins.length,
+        mostUsedPlugins: pluginsWithUsage
+          .sort((a, b) => b.projectUsage.length - a.projectUsage.length)
+          .slice(0, 10)
+          .map(p => ({
+            name: p.name,
+            vendor: p.vendor,
+            usageCount: p.projectUsage.length
+          }))
+      };
+
+      return stats;
+    } catch (error) {
+      console.error('[Database] Failed to get usage stats:', error);
       return null;
     }
   }

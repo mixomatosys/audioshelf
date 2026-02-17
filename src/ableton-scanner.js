@@ -1,0 +1,223 @@
+// AudioShelf - Ableton Project Scanner Module
+// Scans .als files to find which VST plugins are used in projects
+
+const fs = require('fs').promises;
+const path = require('path');
+const zlib = require('zlib');
+const { promisify } = require('util');
+
+const gunzip = promisify(zlib.gunzip);
+
+class AbletonScanner {
+  constructor() {
+    // Mixy's Ableton projects path (hardcoded for now)
+    this.abletonProjectsPath = '/Users/mixy/Dropbox/Music Creation/Ableton Projects';
+  }
+
+  async scanAllProjects() {
+    try {
+      console.log(`[AbletonScanner] Scanning projects in: ${this.abletonProjectsPath}`);
+      
+      // Find all .als files in the directory (including subdirectories)
+      const alsFiles = await this.findALSFiles(this.abletonProjectsPath);
+      console.log(`[AbletonScanner] Found ${alsFiles.length} .als files`);
+
+      const projectData = [];
+
+      for (const alsFile of alsFiles) {
+        try {
+          const project = await this.parseProject(alsFile);
+          if (project) {
+            projectData.push(project);
+          }
+        } catch (error) {
+          console.warn(`[AbletonScanner] Failed to parse ${alsFile}:`, error.message);
+        }
+      }
+
+      console.log(`[AbletonScanner] Successfully parsed ${projectData.length} projects`);
+      return projectData;
+      
+    } catch (error) {
+      console.error('[AbletonScanner] Scan failed:', error);
+      throw error;
+    }
+  }
+
+  async findALSFiles(dirPath) {
+    const alsFiles = [];
+
+    try {
+      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+
+        if (entry.isDirectory()) {
+          // Recursively scan subdirectories
+          const subFiles = await this.findALSFiles(fullPath);
+          alsFiles.push(...subFiles);
+        } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.als')) {
+          alsFiles.push(fullPath);
+        }
+      }
+    } catch (error) {
+      console.warn(`[AbletonScanner] Cannot read directory ${dirPath}:`, error.message);
+    }
+
+    return alsFiles;
+  }
+
+  async parseProject(alsFilePath) {
+    try {
+      console.log(`[AbletonScanner] Parsing project: ${path.basename(alsFilePath)}`);
+
+      // Read the .als file (it's gzipped XML)
+      const compressedData = await fs.readFile(alsFilePath);
+      const xmlData = await gunzip(compressedData);
+      const xmlString = xmlData.toString('utf-8');
+
+      // Extract project info
+      const projectName = this.extractProjectName(xmlString) || path.basename(alsFilePath, '.als');
+      const vstPlugins = this.extractVSTPlugins(xmlString);
+
+      return {
+        name: projectName,
+        filePath: alsFilePath,
+        fileName: path.basename(alsFilePath),
+        vstPlugins: vstPlugins,
+        lastModified: (await fs.stat(alsFilePath)).mtime
+      };
+
+    } catch (error) {
+      console.error(`[AbletonScanner] Failed to parse ${alsFilePath}:`, error);
+      return null;
+    }
+  }
+
+  extractProjectName(xmlString) {
+    // Try to find the project name in the XML
+    // Ableton stores this in various places, let's try the most common ones
+    
+    // Look for LiveSet name attribute
+    let match = xmlString.match(/<LiveSet[^>]*Name="([^"]*)"[^>]*>/);
+    if (match && match[1]) {
+      return match[1];
+    }
+
+    // Look for project title in metadata
+    match = xmlString.match(/<Title[^>]*Value="([^"]*)"[^>]*\/>/);
+    if (match && match[1]) {
+      return match[1];
+    }
+
+    return null; // Will fall back to filename
+  }
+
+  extractVSTPlugins(xmlString) {
+    const plugins = [];
+    
+    // Look for VST plugin references in the XML
+    // Ableton stores VST plugins with various patterns, let's find them all
+    
+    // Pattern 1: PluginDesc with VST information
+    const vstPatterns = [
+      // VST2 plugins
+      /<PluginDesc[^>]*>[\s\S]*?<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/VstPluginInfo>[\s\S]*?<\/PluginDesc>/g,
+      
+      // VST3 plugins  
+      /<PluginDesc[^>]*>[\s\S]*?<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/Vst3PluginInfo>[\s\S]*?<\/PluginDesc>/g,
+      
+      // Alternative VST patterns
+      /<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/VstPluginInfo>/g,
+      
+      // VST3 alternative pattern
+      /<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/Vst3PluginInfo>/g
+    ];
+
+    vstPatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(xmlString)) !== null) {
+        let pluginName = match[1];
+        
+        // Clean up the plugin name
+        pluginName = this.cleanPluginName(pluginName);
+        
+        if (pluginName && !plugins.includes(pluginName)) {
+          plugins.push(pluginName);
+        }
+      }
+    });
+
+    // Also look for simpler plugin name patterns
+    const simplePattern = /<PluginName[^>]*Value="([^"]*)"[^>]*\/>/g;
+    let match;
+    while ((match = simplePattern.exec(xmlString)) !== null) {
+      let pluginName = this.cleanPluginName(match[1]);
+      if (pluginName && !plugins.includes(pluginName)) {
+        plugins.push(pluginName);
+      }
+    }
+
+    console.log(`[AbletonScanner] Found ${plugins.length} VST plugins in project`);
+    return plugins.sort();
+  }
+
+  cleanPluginName(rawName) {
+    if (!rawName) return null;
+
+    // Remove file extensions
+    let cleaned = rawName.replace(/\.(dll|vst|vst3|component)$/i, '');
+    
+    // Remove common prefixes/suffixes
+    cleaned = cleaned.replace(/^(vst_|au_|rtas_)/i, '');
+    cleaned = cleaned.replace(/(_x64|_x86|_64bit|_32bit)$/i, '');
+    
+    // Trim whitespace
+    cleaned = cleaned.trim();
+    
+    // Skip empty or very short names
+    if (!cleaned || cleaned.length < 2) return null;
+    
+    // Skip common Ableton built-in devices (these aren't VSTs)
+    const builtInDevices = [
+      'Operator', 'Simpler', 'Impulse', 'DrumRack', 'InstrumentRack',
+      'Wavetable', 'Bass', 'Collision', 'Tension', 'Analog', 'Compressor',
+      'EQ Eight', 'Reverb', 'Delay', 'Chorus', 'Flanger', 'Phaser',
+      'AutoFilter', 'AutoPan', 'Saturator', 'Redux', 'Vocoder',
+      'Spectrum', 'Tuner', 'Limiter', 'Gate', 'Multiband Dynamics'
+    ];
+    
+    if (builtInDevices.includes(cleaned)) return null;
+    
+    return cleaned;
+  }
+
+  // Method to match Ableton plugin names to AudioShelf plugin database
+  matchPluginsToDatabase(abletonPlugins, databasePlugins) {
+    const matches = [];
+    
+    for (const abletonPlugin of abletonPlugins) {
+      // Try to find a matching plugin in the database
+      const match = databasePlugins.find(dbPlugin => {
+        // Simple name matching (case-insensitive)
+        return dbPlugin.name.toLowerCase() === abletonPlugin.toLowerCase();
+      });
+      
+      if (match) {
+        matches.push({
+          abletonName: abletonPlugin,
+          databaseId: match.id,
+          databasePlugin: match
+        });
+      } else {
+        // No match found - this VST might not be in the AudioShelf database
+        console.log(`[AbletonScanner] No database match for plugin: ${abletonPlugin}`);
+      }
+    }
+    
+    return matches;
+  }
+}
+
+module.exports = AbletonScanner;

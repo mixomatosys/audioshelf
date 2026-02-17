@@ -3,11 +3,13 @@
 const path = require('path');
 const Scanner = require(path.join(process.cwd(), 'src', 'scanner.js'));
 const Database = require(path.join(process.cwd(), 'src', 'database.js'));
+const AbletonScanner = require(path.join(process.cwd(), 'src', 'ableton-scanner.js'));
 
 class AudioShelfApp {
   constructor() {
     this.scanner = new Scanner();
     this.database = new Database();
+    this.abletonScanner = new AbletonScanner();
     this.plugins = [];
     
     this.initializeUI();
@@ -16,6 +18,7 @@ class AudioShelfApp {
   initializeUI() {
     // Get DOM elements
     this.scanButton = document.getElementById('scanButton');
+    this.scanAbletonButton = document.getElementById('scanAbletonButton');
     this.exportButton = document.getElementById('exportButton');
     this.statusText = document.getElementById('statusText');
     this.pluginContainer = document.getElementById('pluginContainer');
@@ -34,6 +37,7 @@ class AudioShelfApp {
 
     // Bind events
     this.scanButton.addEventListener('click', () => this.scanPlugins());
+    this.scanAbletonButton.addEventListener('click', () => this.scanAbletonProjects());
     this.exportButton.addEventListener('click', () => this.exportPluginList());
     
     // Filter events
@@ -247,7 +251,7 @@ class AudioShelfApp {
         </div>` : '';
 
       return `
-        <div class="plugin-item">
+        <div class="plugin-item" onclick="app.showPluginDetail('${plugin.id}')" style="cursor: pointer;">
           <div class="plugin-name">${plugin.name}</div>
           <div class="plugin-info">
             ${plugin.vendor || 'Unknown Vendor'} • 
@@ -289,6 +293,190 @@ class AudioShelfApp {
         <p>${message}</p>
       </div>
     `;
+  }
+
+  async scanAbletonProjects() {
+    this.scanAbletonButton.disabled = true;
+    this.scanAbletonButton.textContent = '🎵 Scanning...';
+    this.updateStatus('Scanning Ableton projects...');
+    
+    try {
+      // Check if we have plugins to work with
+      if (!this.plugins || this.plugins.length === 0) {
+        throw new Error('Please scan plugins first before scanning Ableton projects');
+      }
+
+      // Scan all .als files and extract VST plugin usage
+      const projects = await this.abletonScanner.scanAllProjects();
+      
+      // Save project data to database
+      await this.database.saveProjects(projects);
+      
+      // Link projects to plugins and update plugin data with usage info
+      const pluginsWithUsage = await this.database.linkProjectsToPlugins(projects, this.plugins);
+      
+      // Update plugins in database with usage information
+      await this.database.savePlugins(pluginsWithUsage);
+      
+      // Update local state
+      this.plugins = pluginsWithUsage;
+      
+      // Refresh UI
+      this.updateUI();
+      this.updateStatus(`Scanned ${projects.length} Ableton projects, linked to ${pluginsWithUsage.filter(p => p.projectUsage && p.projectUsage.length > 0).length} plugins`);
+      
+    } catch (error) {
+      console.error('Ableton scan failed:', error);
+      this.updateStatus(`Ableton scan failed: ${error.message}`);
+      this.showError('Failed to scan Ableton projects. Check console for details.');
+    } finally {
+      this.scanAbletonButton.disabled = false;
+      this.scanAbletonButton.textContent = '🎵 Scan Ableton Projects';
+    }
+  }
+
+  showPluginDetail(pluginId) {
+    const plugin = this.plugins.find(p => p.id === pluginId);
+    if (!plugin) {
+      console.error('Plugin not found:', pluginId);
+      return;
+    }
+
+    // Hide main view, show detail view
+    document.querySelector('.main-content').style.display = 'none';
+    
+    // Create detail view if it doesn't exist
+    let detailView = document.getElementById('plugin-detail-view');
+    if (!detailView) {
+      detailView = document.createElement('div');
+      detailView.id = 'plugin-detail-view';
+      detailView.className = 'plugin-detail-view';
+      document.querySelector('.app-container').appendChild(detailView);
+    }
+
+    // Render plugin detail
+    this.renderPluginDetail(plugin, detailView);
+    detailView.style.display = 'flex';
+  }
+
+  renderPluginDetail(plugin, container) {
+    // Create format badges
+    const formatBadges = plugin.formats.map(format => {
+      const badgeColor = this.getFormatColor(format.format);
+      return `<span style="background: ${badgeColor}; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.9em; margin-right: 8px;">${format.format}</span>`;
+    }).join('');
+
+    // Project usage section
+    const projectUsageHtml = this.renderProjectUsage(plugin);
+
+    // Enhanced details
+    const categoryText = plugin.subcategory ? `${plugin.subcategory}` : plugin.category;
+    const versionDisplay = plugin.version && plugin.version !== '?' ? plugin.version : 'Unknown';
+    const demoIndicator = plugin.isDemo ? '<span style="background: #FF9800; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.9em; margin-right: 8px;">DEMO VERSION</span>' : '';
+    
+    container.innerHTML = `
+      <div class="detail-header">
+        <button class="back-button" onclick="app.showMainView()">← Back to Plugins</button>
+        <h1>${plugin.name}</h1>
+      </div>
+
+      <div class="detail-content">
+        <div class="detail-sidebar">
+          <div class="detail-card">
+            <h3>Plugin Information</h3>
+            <div class="detail-info">
+              <div class="detail-row">
+                <span class="detail-label">Vendor:</span>
+                <span class="detail-value">${plugin.vendor || 'Unknown'}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Category:</span>
+                <span class="detail-value">${categoryText || 'Other'}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Version:</span>
+                <span class="detail-value">${versionDisplay}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Formats:</span>
+                <span class="detail-value">${formatBadges}</span>
+              </div>
+              ${demoIndicator ? `<div class="detail-row">
+                <span class="detail-label">Type:</span>
+                <span class="detail-value">${demoIndicator}</span>
+              </div>` : ''}
+            </div>
+          </div>
+
+          ${plugin.description && plugin.description !== `${plugin.category || 'Audio plugin'} by ${plugin.vendor || 'Unknown'}` ? `
+          <div class="detail-card">
+            <h3>Description</h3>
+            <p>${plugin.description}</p>
+          </div>
+          ` : ''}
+
+          ${plugin.tags && plugin.tags.length > 0 ? `
+          <div class="detail-card">
+            <h3>Tags</h3>
+            <div class="tags-display">
+              ${plugin.tags.map(tag => `<span class="tag-pill">${tag}</span>`).join('')}
+            </div>
+          </div>
+          ` : ''}
+        </div>
+
+        <div class="detail-main">
+          ${projectUsageHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  renderProjectUsage(plugin) {
+    if (!plugin.projectUsage || plugin.projectUsage.length === 0) {
+      return `
+        <div class="detail-card">
+          <h3>📁 Used in Ableton Projects</h3>
+          <div class="no-usage">
+            <p>This plugin is not currently used in any scanned Ableton projects.</p>
+            <p style="font-size: 0.9em; opacity: 0.7; margin-top: 10px;">
+              <em>Scan Ableton projects to see usage information.</em>
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    const projectsList = plugin.projectUsage.map(usage => {
+      const lastModified = new Date(usage.lastModified).toLocaleDateString();
+      return `
+        <div class="project-item">
+          <div class="project-name">${usage.projectName}</div>
+          <div class="project-info">
+            <span class="project-file">${usage.projectFile}</span>
+            <span class="project-date">Modified: ${lastModified}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="detail-card">
+        <h3>📁 Used in Ableton Projects (${plugin.projectUsage.length})</h3>
+        <div class="projects-list">
+          ${projectsList}
+        </div>
+      </div>
+    `;
+  }
+
+  showMainView() {
+    // Hide detail view, show main view
+    const detailView = document.getElementById('plugin-detail-view');
+    if (detailView) {
+      detailView.style.display = 'none';
+    }
+    document.querySelector('.main-content').style.display = 'flex';
   }
 
   exportPluginList() {
@@ -341,7 +529,7 @@ class AudioShelfApp {
 
 // Initialize the app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  new AudioShelfApp();
+  window.app = new AudioShelfApp();
 });
 
 // Handle app focus/blur for potential future features

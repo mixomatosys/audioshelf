@@ -254,6 +254,178 @@
     .filter-clear:hover {
       background: #d32f2f;
     }
+
+    /* Plugin Detail View Styles */
+    .plugin-detail-view {
+      height: 100vh;
+      display: none;
+      flex-direction: column;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: white;
+      overflow: hidden;
+    }
+
+    .detail-header {
+      background: rgba(0,0,0,0.3);
+      padding: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .back-button {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: background 0.2s ease;
+    }
+
+    .back-button:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .detail-header h1 {
+      font-size: 2.5em;
+      margin: 0;
+    }
+
+    .detail-content {
+      flex: 1;
+      display: flex;
+      padding: 20px;
+      gap: 20px;
+      overflow: hidden;
+    }
+
+    .detail-sidebar {
+      width: 350px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .detail-main {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .detail-card {
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .detail-card h3 {
+      margin-bottom: 15px;
+      color: #ffffff;
+      font-size: 1.2em;
+    }
+
+    .detail-info {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .detail-label {
+      font-weight: bold;
+      opacity: 0.8;
+      min-width: 80px;
+    }
+
+    .detail-value {
+      text-align: right;
+      flex: 1;
+    }
+
+    .tags-display {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag-pill {
+      background: rgba(255,255,255,0.2);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.85em;
+    }
+
+    .no-usage {
+      text-align: center;
+      opacity: 0.7;
+      padding: 30px 20px;
+    }
+
+    .projects-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .project-item {
+      background: rgba(255,255,255,0.1);
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #4CAF50;
+    }
+
+    .project-name {
+      font-weight: bold;
+      font-size: 1.1em;
+      margin-bottom: 5px;
+    }
+
+    .project-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      opacity: 0.8;
+      font-size: 0.9em;
+    }
+
+    .project-file {
+      color: #4CAF50;
+    }
+
+    .project-date {
+      color: #2196F3;
+    }
+
+    /* Scrollbar styles for detail views */
+    .detail-sidebar::-webkit-scrollbar,
+    .detail-main::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .detail-sidebar::-webkit-scrollbar-track,
+    .detail-main::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+    }
+
+    .detail-sidebar::-webkit-scrollbar-thumb,
+    .detail-main::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.3);
+      border-radius: 4px;
+    }
+
+    .detail-sidebar::-webkit-scrollbar-thumb:hover,
+    .detail-main::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.5);
+    }
   </style>
 </head>
 <body>
@@ -266,6 +438,7 @@
     <div class="main-content">
       <div class="sidebar">
         <button class="scan-button" id="scanButton">🔍 Scan Plugins</button>
+        <button class="scan-button" id="scanAbletonButton" style="background: #FF9800; margin-bottom: 5px;">🎵 Scan Ableton Projects</button>
         <button class="scan-button" id="exportButton" style="background: #2196F3; margin-bottom: 10px;">📋 Export List</button>
         
         <div class="status">
