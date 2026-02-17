@@ -154,16 +154,38 @@ class AbletonScanner {
   extractVSTPlugins(xmlString) {
     const plugins = [];
     
-    // DEBUG: Simplified debugging now that we know the structure
-    console.log('[AbletonScanner] DEBUG: Extracting plugins from BrowserContentPath elements...');
+    // DEBUG: Switch to looking for actually loaded plugins, not browser history
+    console.log('[AbletonScanner] DEBUG: Looking for actually LOADED plugins in PluginDevice elements...');
     
-    // Look for VST plugin references in the XML
-    // Based on discovered XML structure: BrowserContentPath contains plugin info
+    // Count different plugin-related elements to understand structure
+    const pluginDeviceCount = (xmlString.match(/<PluginDevice[^>]*>/g) || []).length;
+    const vst3InfoCount = (xmlString.match(/<Vst3PluginInfo[^>]*>/g) || []).length;
+    const vstInfoCount = (xmlString.match(/<VstPluginInfo[^>]*>/g) || []).length;
+    const browserPathCount = (xmlString.match(/<BrowserContentPath[^>]*>/g) || []).length;
+    
+    console.log(`[AbletonScanner] DEBUG: Found ${pluginDeviceCount} PluginDevice, ${vst3InfoCount} Vst3PluginInfo, ${vstInfoCount} VstPluginInfo, ${browserPathCount} BrowserContentPath`);
+    
+    // If this project has lots of browser paths but few plugin devices, that explains the contamination
+    if (browserPathCount > pluginDeviceCount * 2) {
+      console.log(`[AbletonScanner] DEBUG: WARNING: ${browserPathCount} browser paths vs ${pluginDeviceCount} plugin devices - browser history contamination likely!`);
+    }
+    
+    // Look for ACTUALLY LOADED VST plugins in the XML
+    // BrowserContentPath was wrong - that's browser history, not loaded plugins
+    // Need to find PluginDevice elements with actual plugin instances
     
     const vstPatterns = [
-      // Plugin names in BrowserContentPath (primary pattern)  
-      // Format: query:Plugins#VST3:Toontrack:EZdrummer%203
-      /<BrowserContentPath[^>]*Value="query:Plugins#(?:VST3?|AU):[^:]*:([^"]*)"[^>]*\/>/g
+      // Look for VST3 plugin info within PluginDevice (actually loaded plugins)
+      /<PluginDevice[^>]*>[\s\S]*?<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>/g,
+      
+      // Look for VST2 plugin info within PluginDevice  
+      /<PluginDevice[^>]*>[\s\S]*?<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>/g,
+      
+      // Direct VST3 plugin info (alternative structure)
+      /<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>/g,
+      
+      // Direct VST2 plugin info (alternative structure)  
+      /<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>/g
     ];
 
     vstPatterns.forEach((pattern, index) => {
@@ -175,23 +197,15 @@ class AbletonScanner {
         let rawPluginName = match[1];
         console.log(`[AbletonScanner] DEBUG: Raw plugin name from pattern ${index + 1}: "${rawPluginName}"`);
         
-        // URL decode the plugin name (convert %20 to spaces, etc.)
-        let decodedPluginName;
-        try {
-          decodedPluginName = decodeURIComponent(rawPluginName);
-        } catch (error) {
-          decodedPluginName = rawPluginName; // Fallback if decoding fails
-        }
-        console.log(`[AbletonScanner] DEBUG: URL decoded: "${rawPluginName}" → "${decodedPluginName}"`);
-        
-        // Clean up the plugin name
-        let cleanedPluginName = this.cleanPluginName(decodedPluginName);
+        // Clean up the plugin name (no URL decoding needed for PluginDevice elements)
+        let cleanedPluginName = this.cleanPluginName(rawPluginName);
+        console.log(`[AbletonScanner] DEBUG: Raw plugin from actual device: "${rawPluginName}" → "${cleanedPluginName || 'FILTERED OUT'}"`);
         
         if (cleanedPluginName && !plugins.includes(cleanedPluginName)) {
           plugins.push(cleanedPluginName);
-          console.log(`[AbletonScanner] DEBUG: ACCEPTED plugin via pattern ${index + 1}: "${decodedPluginName}" → "${cleanedPluginName}"`);
+          console.log(`[AbletonScanner] DEBUG: ACCEPTED plugin via pattern ${index + 1}: "${rawPluginName}" → "${cleanedPluginName}"`);
         } else if (!cleanedPluginName) {
-          console.log(`[AbletonScanner] DEBUG: FILTERED OUT plugin: "${decodedPluginName}" (cleaned to null)`);
+          console.log(`[AbletonScanner] DEBUG: FILTERED OUT plugin: "${rawPluginName}" (cleaned to null)`);
         }
       }
       if (patternMatches > 0) {
@@ -199,21 +213,7 @@ class AbletonScanner {
       }
     });
 
-    // Also look for simpler plugin name patterns
-    const simplePattern = /<PluginName[^>]*Value="([^"]*)"[^>]*\/>/g;
-    let match;
-    while ((match = simplePattern.exec(xmlString)) !== null) {
-      let rawPluginName = match[1];
-      console.log(`[AbletonScanner] DEBUG: Raw plugin name from simple pattern: "${rawPluginName}"`);
-      
-      let cleanedPluginName = this.cleanPluginName(rawPluginName);
-      if (cleanedPluginName && !plugins.includes(cleanedPluginName)) {
-        plugins.push(cleanedPluginName);
-        console.log(`[AbletonScanner] DEBUG: ACCEPTED plugin via simple pattern: "${rawPluginName}" → "${cleanedPluginName}"`);
-      } else if (!cleanedPluginName) {
-        console.log(`[AbletonScanner] DEBUG: FILTERED OUT plugin: "${rawPluginName}" (cleaned to null)`);
-      }
-    }
+    // Skip the simple pattern - focus only on PluginDevice-contained plugins
 
     // IMPORTANT: Deduplicate plugins (same plugin can be referenced multiple times per project)
     const uniquePlugins = [...new Set(plugins)];
@@ -231,8 +231,11 @@ class AbletonScanner {
   cleanPluginName(rawName) {
     if (!rawName) return null;
 
+    // Remove file extensions that might come from VstPluginInfo FileName
+    let cleaned = rawName.replace(/\.(dll|vst|vst3|component)$/i, '');
+    
     // Trim whitespace
-    let cleaned = rawName.trim();
+    cleaned = cleaned.trim();
     
     // Skip empty or very short names
     if (!cleaned || cleaned.length < 2) return null;
@@ -248,8 +251,7 @@ class AbletonScanner {
     
     if (builtInDevices.includes(cleaned)) return null;
     
-    // Since we're now extracting from BrowserContentPath, we should get clean plugin names
-    // No need for aggressive filtering of track names, audio clips, etc.
+    // Now we're extracting from PluginDevice elements, so should get actual plugin names
     return cleaned;
   }
 
