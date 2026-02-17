@@ -63,8 +63,9 @@ class PluginScanner {
     const allPlugins = [];
 
     try {
-      // Scan VST plugins
-      const vstPlugins = await this.scanPluginType('vst', '.dll', '.vst');
+      // Scan VST plugins (different extensions per platform)
+      const vstExtensions = this.platform === 'win32' ? ['.dll', '.vst'] : ['.vst'];
+      const vstPlugins = await this.scanPluginType('vst', ...vstExtensions);
       allPlugins.push(...vstPlugins);
 
       // Scan VST3 plugins
@@ -91,17 +92,21 @@ class PluginScanner {
     const paths = this.pluginPaths[type] || [];
 
     console.log(`[Scanner] Scanning ${type.toUpperCase()} plugins in ${paths.length} directories`);
+    console.log(`[Scanner] Looking for extensions: ${extensions.join(', ')}`);
+    console.log(`[Scanner] Directories to scan:`, paths);
 
     for (const pluginPath of paths) {
+      console.log(`[Scanner] Checking directory: ${pluginPath}`);
       try {
         const found = await this.scanDirectory(pluginPath, type.toUpperCase(), extensions);
         plugins.push(...found);
+        console.log(`[Scanner] Found ${found.length} plugins in ${pluginPath}`);
       } catch (error) {
         console.warn(`[Scanner] Skipped directory ${pluginPath}: ${error.message}`);
       }
     }
 
-    console.log(`[Scanner] Found ${plugins.length} ${type.toUpperCase()} plugins`);
+    console.log(`[Scanner] Found ${plugins.length} ${type.toUpperCase()} plugins total`);
     return plugins;
   }
 
@@ -109,6 +114,9 @@ class PluginScanner {
     const plugins = [];
 
     try {
+      // Check if directory exists first
+      await fs.access(directory);
+      
       const entries = await fs.readdir(directory, { withFileTypes: true });
 
       for (const entry of entries) {
@@ -134,8 +142,16 @@ class PluginScanner {
         }
       }
     } catch (error) {
-      console.error(`[Scanner] Cannot read directory ${directory}:`, error.message);
-      throw error;
+      if (error.code === 'ENOENT') {
+        console.log(`[Scanner] Directory doesn't exist: ${directory}`);
+        return plugins; // Return empty array instead of throwing
+      } else if (error.code === 'EACCES') {
+        console.warn(`[Scanner] Permission denied: ${directory}`);
+        return plugins; // Return empty array instead of throwing
+      } else {
+        console.error(`[Scanner] Cannot read directory ${directory}:`, error.message);
+        return plugins; // Return empty array instead of throwing
+      }
     }
 
     return plugins;
