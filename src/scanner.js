@@ -196,7 +196,8 @@ class PluginScanner {
         installed: true,
         category: this.guessCategory(filename),
         isBundle: stats.isDirectory(),
-        scanDate: new Date().toISOString()
+        scanDate: new Date().toISOString(),
+        isDemo: this.detectDemoPlugin(pluginPath, filename)
       };
 
       console.log(`[Scanner] Found plugin: ${plugin.name} (${plugin.format}) ${plugin.isBundle ? '[Bundle]' : '[File]'}`);
@@ -365,6 +366,52 @@ class PluginScanner {
     }
     
     return 'Other';
+  }
+
+  detectDemoPlugin(pluginPath, filename) {
+    const fullPath = pluginPath.toLowerCase();
+    const name = filename.toLowerCase();
+    
+    // Check for demo indicators in filename
+    const demoKeywords = [
+      'demo', 'trial', 'lite', 'limited', 'free', 'eval', 'evaluation',
+      ' le ', '_le_', ' le.', '_le.', // Limited Edition
+      'beta', 'preview', 'sample'
+    ];
+    
+    for (const keyword of demoKeywords) {
+      if (name.includes(keyword)) {
+        return true;
+      }
+    }
+    
+    // Check for demo indicators in path
+    const demoPathKeywords = [
+      '/demo/', '/trial/', '/free/', '/beta/', '/preview/',
+      '\\demo\\', '\\trial\\', '\\free\\', '\\beta\\', '\\preview\\'
+    ];
+    
+    for (const pathKeyword of demoPathKeywords) {
+      if (fullPath.includes(pathKeyword)) {
+        return true;
+      }
+    }
+    
+    // Known demo plugins (add more as needed)
+    const knownDemos = [
+      'kontakt player', 'kontakt 7 player',
+      'amplitube custom shop',
+      'guitar rig player',
+      'reaktor player'
+    ];
+    
+    for (const knownDemo of knownDemos) {
+      if (name.includes(knownDemo)) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 }
 

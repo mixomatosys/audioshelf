@@ -123,12 +123,16 @@ class AudioShelfApp {
       const statusColor = allInstalled ? '#4CAF50' : '#f44336';
       const statusText = allInstalled ? '✅ Installed' : '❌ Missing';
 
+      // Add demo indicator
+      const demoIndicator = plugin.isDemo ? '<span style="background: #FF9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-right: 4px;">DEMO</span>' : '';
+
       return `
         <div class="plugin-item">
           <div class="plugin-name">${plugin.name}</div>
           <div class="plugin-info">
             ${plugin.vendor || 'Unknown Vendor'} • 
             ${formatBadges} • 
+            ${demoIndicator}
             v${plugin.version || '?'} • 
             <span style="color: ${statusColor}">
               ${statusText}
