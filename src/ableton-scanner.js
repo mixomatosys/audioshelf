@@ -164,10 +164,18 @@ class AbletonScanner {
     console.log(`[AbletonScanner] DEBUG: Found ${vst3InfoCount} Vst3PluginInfo, ${vstInfoCount} VstPluginInfo elements`);
     
     // DEBUG: Show actual XML structure of first Vst3PluginInfo to understand format
-    if (vst3InfoCount > 0) {
-      const vst3Sample = xmlString.match(/<Vst3PluginInfo[^>]*>[\s\S]{0,500}?<\/Vst3PluginInfo>/);
+    if (vst3InfoCount > 0 && alsFilePath.includes('EP Drum Stems Full.als')) {
+      const vst3Sample = xmlString.match(/<Vst3PluginInfo[^>]*>[\s\S]{0,800}?<\/Vst3PluginInfo>/);
       if (vst3Sample) {
-        console.log(`[AbletonScanner] DEBUG: Sample Vst3PluginInfo XML structure:`, vst3Sample[0]);
+        console.log(`[AbletonScanner] DEBUG: Sample Vst3PluginInfo XML structure from ${path.basename(alsFilePath)}:`);
+        console.log(vst3Sample[0]);
+      } else {
+        // Try a broader search if the first one fails
+        const vst3Broader = xmlString.match(/<Vst3PluginInfo[^>]*>[\s\S]{0,200}/);
+        if (vst3Broader) {
+          console.log(`[AbletonScanner] DEBUG: Broader Vst3PluginInfo search:`);
+          console.log(vst3Broader[0]);
+        }
       }
     }
     
