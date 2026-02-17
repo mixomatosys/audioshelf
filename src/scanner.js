@@ -123,17 +123,29 @@ class PluginScanner {
         const fullPath = path.join(directory, entry.name);
 
         if (entry.isDirectory()) {
-          // Recursively scan subdirectories
-          try {
-            const subPlugins = await this.scanDirectory(fullPath, format, extensions);
-            plugins.push(...subPlugins);
-          } catch (error) {
-            console.warn(`[Scanner] Skipped subdirectory ${fullPath}: ${error.message}`);
-          }
-        } else if (entry.isFile()) {
-          // Check if file has a valid plugin extension
+          // Check if this directory is a plugin bundle (Mac plugins are directories ending in .vst3, .component, etc.)
           const ext = path.extname(entry.name).toLowerCase();
           if (extensions.includes(ext)) {
+            // This is a plugin bundle (Mac-style)
+            console.log(`[Scanner] Found plugin bundle: ${entry.name}`);
+            const plugin = await this.analyzePlugin(fullPath, format);
+            if (plugin) {
+              plugins.push(plugin);
+            }
+          } else {
+            // Regular subdirectory - scan recursively
+            try {
+              const subPlugins = await this.scanDirectory(fullPath, format, extensions);
+              plugins.push(...subPlugins);
+            } catch (error) {
+              console.warn(`[Scanner] Skipped subdirectory ${fullPath}: ${error.message}`);
+            }
+          }
+        } else if (entry.isFile()) {
+          // Check if file has a valid plugin extension (Windows-style)
+          const ext = path.extname(entry.name).toLowerCase();
+          if (extensions.includes(ext)) {
+            console.log(`[Scanner] Found plugin file: ${entry.name}`);
             const plugin = await this.analyzePlugin(fullPath, format);
             if (plugin) {
               plugins.push(plugin);
@@ -157,31 +169,39 @@ class PluginScanner {
     return plugins;
   }
 
-  async analyzePlugin(filePath, format) {
+  async analyzePlugin(pluginPath, format) {
     try {
-      const stats = await fs.stat(filePath);
-      const filename = path.basename(filePath, path.extname(filePath));
+      const stats = await fs.stat(pluginPath);
+      const filename = path.basename(pluginPath, path.extname(pluginPath));
+      
+      // Calculate size appropriately for directories vs files
+      let size = stats.size;
+      if (stats.isDirectory()) {
+        // For plugin bundles, we'll just use 0 for now (calculating directory size is complex)
+        size = 0;
+      }
       
       // Extract plugin info from filename (basic approach)
       const plugin = {
-        id: this.generatePluginId(filePath),
+        id: this.generatePluginId(pluginPath),
         name: this.cleanPluginName(filename),
-        path: filePath,
+        path: pluginPath,
         format: format,
-        vendor: this.extractVendor(filePath, filename),
+        vendor: this.extractVendor(pluginPath, filename),
         version: null, // We'll enhance this later
-        size: stats.size,
+        size: size,
         modified: stats.mtime,
         installed: true,
         category: this.guessCategory(filename),
+        isBundle: stats.isDirectory(),
         scanDate: new Date().toISOString()
       };
 
-      console.log(`[Scanner] Found plugin: ${plugin.name} (${plugin.format})`);
+      console.log(`[Scanner] Found plugin: ${plugin.name} (${plugin.format}) ${plugin.isBundle ? '[Bundle]' : '[File]'}`);
       return plugin;
 
     } catch (error) {
-      console.warn(`[Scanner] Failed to analyze ${filePath}: ${error.message}`);
+      console.warn(`[Scanner] Failed to analyze ${pluginPath}: ${error.message}`);
       return null;
     }
   }
