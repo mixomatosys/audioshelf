@@ -215,15 +215,17 @@ class AbletonScanner {
       }
     }
 
-    console.log(`[AbletonScanner] Found ${plugins.length} VST plugins in project:`, plugins);
+    // IMPORTANT: Deduplicate plugins (same plugin can be referenced multiple times per project)
+    const uniquePlugins = [...new Set(plugins)];
     
-    // DEBUG: If this project has a suspicious number of plugins, investigate
-    if (plugins.length > 20) {
-      console.log(`[AbletonScanner] WARNING: Project has ${plugins.length} plugins - this seems excessive!`);
-      console.log(`[AbletonScanner] DEBUG: First 10 plugins:`, plugins.slice(0, 10));
+    console.log(`[AbletonScanner] Found ${plugins.length} VST plugin references, ${uniquePlugins.length} unique plugins in project:`, uniquePlugins);
+    
+    // DEBUG: If this project has duplicates, show the difference
+    if (plugins.length !== uniquePlugins.length) {
+      console.log(`[AbletonScanner] DEBUG: Deduplicated ${plugins.length - uniquePlugins.length} duplicate plugin references`);
     }
     
-    return plugins.sort();
+    return uniquePlugins.sort();
   }
 
   cleanPluginName(rawName) {
