@@ -154,25 +154,23 @@ class AbletonScanner {
     }
     
     // Look for VST plugin references in the XML
-    // Ableton stores VST plugins with various patterns, let's find them all
+    // Based on actual XML structure: <PluginDevice> containers with plugin info
     
-    // Pattern 1: PluginDesc with VST information
     const vstPatterns = [
-      // VST2 plugins
-      /<PluginDesc[^>]*>[\s\S]*?<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/VstPluginInfo>[\s\S]*?<\/PluginDesc>/g,
+      // VST3 plugins within PluginDevice containers
+      /<PluginDevice[^>]*>[\s\S]*?<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/Vst3PluginInfo>[\s\S]*?<\/PluginDevice>/g,
       
-      // VST3 plugins  
-      /<PluginDesc[^>]*>[\s\S]*?<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/Vst3PluginInfo>[\s\S]*?<\/PluginDesc>/g,
+      // VST2 plugins within PluginDevice containers  
+      /<PluginDevice[^>]*>[\s\S]*?<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/VstPluginInfo>[\s\S]*?<\/PluginDevice>/g,
       
-      // Alternative VST patterns
-      /<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/VstPluginInfo>/g,
-      
-      // VST3 alternative pattern
+      // Alternative VST3 pattern
       /<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/Vst3PluginInfo>/g,
       
-      // Broader patterns to catch different structures
-      /<FileName[^>]*Value="([^"]*\.(?:vst|dll))"[^>]*\/>/gi,
-      /<Name[^>]*Value="([^"]*)"[^>]*\/>/g
+      // Alternative VST2 pattern
+      /<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/VstPluginInfo>/g,
+      
+      // File names with VST extensions
+      /<FileName[^>]*Value="([^"]*\.(?:vst3?|dll))"[^>]*\/>/gi
     ];
 
     vstPatterns.forEach((pattern, index) => {
@@ -226,6 +224,21 @@ class AbletonScanner {
     
     // Skip empty or very short names
     if (!cleaned || cleaned.length < 2) return null;
+    
+    // Skip obvious non-plugin names
+    const nonPluginPatterns = [
+      /^(Track|Audio|Lane|Major|FX)\s*\d*$/i,  // Track 1, Audio, Audio 2, Lane, Major, FX2
+      /^\d+-.*$/,  // Numbers at start like "1-Dark Poly Pad"
+      /^Audio\s+\d+(\s+\[.*\])*(\s+\d+)*$/i,  // Audio 15 [timestamp] 16
+      /^Rhythm\s+\d+(\s+\d+)*$/i,  // Rhythm 1 22
+      /bpm$/i,  // Ends with bpm like "Hard Clap Drums 122bpm"
+      /^\[.*\]$/,  // Wrapped in brackets
+      /\d{4}-\d{2}-\d{2}\s+\d{6}/  // Contains timestamps
+    ];
+    
+    for (const pattern of nonPluginPatterns) {
+      if (pattern.test(cleaned)) return null;
+    }
     
     // Skip common Ableton built-in devices (these aren't VSTs)
     const builtInDevices = [
