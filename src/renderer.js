@@ -1,7 +1,8 @@
 // AudioShelf - Renderer Process (Frontend Logic)
 
-const Scanner = require('./scanner');
-const Database = require('./database');
+const path = require('path');
+const Scanner = require(path.join(process.cwd(), 'src', 'scanner.js'));
+const Database = require(path.join(process.cwd(), 'src', 'database.js'));
 
 class AudioShelfApp {
   constructor() {
