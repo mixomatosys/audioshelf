@@ -77,6 +77,13 @@ class AbletonScanner {
       const xmlData = await gunzip(compressedData);
       const xmlString = xmlData.toString('utf-8');
 
+      // DEBUG: Show XML structure for first project
+      if (alsFilePath.includes('spring walk')) {
+        console.log('[AbletonScanner] DEBUG: Sample XML structure (first 2000 chars):');
+        console.log(xmlString.substring(0, 2000));
+        console.log('[AbletonScanner] DEBUG: ...searching for plugin patterns in full XML...');
+      }
+
       // Extract project info
       const projectName = this.extractProjectName(xmlString) || path.basename(alsFilePath, '.als');
       const vstPlugins = this.extractVSTPlugins(xmlString);
@@ -117,6 +124,35 @@ class AbletonScanner {
   extractVSTPlugins(xmlString) {
     const plugins = [];
     
+    // DEBUG: Let's see what kind of plugin-related XML elements exist
+    console.log('[AbletonScanner] DEBUG: Looking for plugin patterns...');
+    
+    // Look for any XML elements that might contain plugin info
+    const debugPatterns = [
+      'PluginDesc',
+      'VstPluginInfo', 
+      'Vst3PluginInfo',
+      'PluginName',
+      'FileName',
+      'Name.*Value=',
+      'VST',
+      'vst'
+    ];
+    
+    debugPatterns.forEach(pattern => {
+      const regex = new RegExp(pattern, 'gi');
+      const matches = xmlString.match(regex);
+      if (matches) {
+        console.log(`[AbletonScanner] DEBUG: Found ${matches.length} matches for "${pattern}": ${matches.slice(0, 5).join(', ')}${matches.length > 5 ? '...' : ''}`);
+      }
+    });
+
+    // Let's also look for a sample of XML around plugin-related content
+    const sampleMatch = xmlString.match(/<[^>]*(?:plugin|vst|Plugin|VST)[^>]*>[\s\S]{0,200}/i);
+    if (sampleMatch) {
+      console.log('[AbletonScanner] DEBUG: Sample plugin XML:', sampleMatch[0]);
+    }
+    
     // Look for VST plugin references in the XML
     // Ableton stores VST plugins with various patterns, let's find them all
     
@@ -132,12 +168,19 @@ class AbletonScanner {
       /<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/VstPluginInfo>/g,
       
       // VST3 alternative pattern
-      /<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/Vst3PluginInfo>/g
+      /<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/Vst3PluginInfo>/g,
+      
+      // Broader patterns to catch different structures
+      /<FileName[^>]*Value="([^"]*\.(?:vst|dll))"[^>]*\/>/gi,
+      /<Name[^>]*Value="([^"]*)"[^>]*\/>/g
     ];
 
-    vstPatterns.forEach(pattern => {
+    vstPatterns.forEach((pattern, index) => {
+      console.log(`[AbletonScanner] DEBUG: Trying pattern ${index + 1}...`);
       let match;
+      let patternMatches = 0;
       while ((match = pattern.exec(xmlString)) !== null) {
+        patternMatches++;
         let pluginName = match[1];
         
         // Clean up the plugin name
@@ -145,7 +188,11 @@ class AbletonScanner {
         
         if (pluginName && !plugins.includes(pluginName)) {
           plugins.push(pluginName);
+          console.log(`[AbletonScanner] DEBUG: Found plugin via pattern ${index + 1}: "${pluginName}"`);
         }
+      }
+      if (patternMatches > 0) {
+        console.log(`[AbletonScanner] DEBUG: Pattern ${index + 1} found ${patternMatches} raw matches`);
       }
     });
 
@@ -156,10 +203,11 @@ class AbletonScanner {
       let pluginName = this.cleanPluginName(match[1]);
       if (pluginName && !plugins.includes(pluginName)) {
         plugins.push(pluginName);
+        console.log(`[AbletonScanner] DEBUG: Found plugin via simple pattern: "${pluginName}"`);
       }
     }
 
-    console.log(`[AbletonScanner] Found ${plugins.length} VST plugins in project`);
+    console.log(`[AbletonScanner] Found ${plugins.length} VST plugins in project:`, plugins);
     return plugins.sort();
   }
 
