@@ -20,13 +20,28 @@ class AudioShelfApp {
     this.statusText = document.getElementById('statusText');
     this.pluginContainer = document.getElementById('pluginContainer');
     this.totalCount = document.getElementById('totalCount');
+    this.visibleCount = document.getElementById('visibleCount');
     this.vstCount = document.getElementById('vstCount');
     this.vst3Count = document.getElementById('vst3Count');
     this.auCount = document.getElementById('auCount');
+    
+    // Filter elements
+    this.vendorFilter = document.getElementById('vendorFilter');
+    this.formatFilter = document.getElementById('formatFilter');
+    this.categoryFilter = document.getElementById('categoryFilter');
+    this.searchFilter = document.getElementById('searchFilter');
+    this.clearFilters = document.getElementById('clearFilters');
 
     // Bind events
     this.scanButton.addEventListener('click', () => this.scanPlugins());
     this.exportButton.addEventListener('click', () => this.exportPluginList());
+    
+    // Filter events
+    this.vendorFilter.addEventListener('change', () => this.applyFilters());
+    this.formatFilter.addEventListener('change', () => this.applyFilters());
+    this.categoryFilter.addEventListener('change', () => this.applyFilters());
+    this.searchFilter.addEventListener('input', () => this.applyFilters());
+    this.clearFilters.addEventListener('click', () => this.clearAllFilters());
 
     // Load existing plugins
     this.loadPlugins();
@@ -81,10 +96,97 @@ class AudioShelfApp {
   }
 
   updateUI() {
-    // Update statistics - count total format instances
+    // Populate filter dropdowns
+    this.populateFilters();
+    
+    // Apply current filters and update display
+    this.applyFilters();
+  }
+
+  populateFilters() {
+    if (!this.plugins || this.plugins.length === 0) return;
+    
+    // Get unique values for filters
+    const vendors = [...new Set(this.plugins.map(p => p.vendor).filter(v => v && v !== 'Unknown' && !v.includes('.vst')))].sort();
+    const categories = [...new Set(this.plugins.map(p => p.subcategory || p.category).filter(c => c))].sort();
+    
+    // Populate vendor filter
+    this.vendorFilter.innerHTML = '<option value="">All Vendors</option>';
+    vendors.forEach(vendor => {
+      this.vendorFilter.innerHTML += `<option value="${vendor}">${vendor}</option>`;
+    });
+    
+    // Populate category filter
+    this.categoryFilter.innerHTML = '<option value="">All Categories</option>';
+    categories.forEach(category => {
+      this.categoryFilter.innerHTML += `<option value="${category}">${category}</option>`;
+    });
+  }
+
+  getFilteredPlugins() {
+    let filtered = [...this.plugins];
+    
+    // Apply vendor filter
+    const vendorValue = this.vendorFilter.value;
+    if (vendorValue) {
+      filtered = filtered.filter(p => p.vendor === vendorValue);
+    }
+    
+    // Apply format filter
+    const formatValue = this.formatFilter.value;
+    if (formatValue) {
+      filtered = filtered.filter(p => 
+        p.formats && p.formats.some(f => f.format === formatValue)
+      );
+    }
+    
+    // Apply category filter
+    const categoryValue = this.categoryFilter.value;
+    if (categoryValue) {
+      filtered = filtered.filter(p => 
+        (p.subcategory || p.category) === categoryValue
+      );
+    }
+    
+    // Apply search filter
+    const searchValue = this.searchFilter.value.toLowerCase();
+    if (searchValue) {
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(searchValue) ||
+        (p.vendor && p.vendor.toLowerCase().includes(searchValue)) ||
+        (p.description && p.description.toLowerCase().includes(searchValue))
+      );
+    }
+    
+    return filtered;
+  }
+
+  applyFilters() {
+    const filteredPlugins = this.getFilteredPlugins();
+    
+    // Update statistics
+    this.updateStatistics(filteredPlugins);
+    
+    // Update plugin list
+    if (filteredPlugins.length === 0) {
+      this.pluginContainer.innerHTML = `
+        <div class="empty-state">
+          <h3>🔍 No Plugins Match Filters</h3>
+          <p>Try adjusting your filter criteria or <button onclick="document.querySelector('#clearFilters').click()" style="color: #4CAF50; background: none; border: none; cursor: pointer; text-decoration: underline;">clearing all filters</button></p>
+        </div>
+      `;
+    } else {
+      this.renderPluginList(filteredPlugins);
+    }
+  }
+
+  updateStatistics(filteredPlugins = null) {
+    const pluginsToCount = filteredPlugins || this.plugins;
+    
+    // Calculate statistics
     let vstCount = 0, vst3Count = 0, auCount = 0;
     
-    this.plugins.forEach(plugin => {
+    pluginsToCount.forEach(plugin => {
       plugin.formats.forEach(format => {
         switch(format.format) {
           case 'VST': vstCount++; break;
@@ -95,25 +197,23 @@ class AudioShelfApp {
     });
 
     this.totalCount.textContent = this.plugins.length;
+    this.visibleCount.textContent = pluginsToCount.length;
     this.vstCount.textContent = vstCount;
     this.vst3Count.textContent = vst3Count;
     this.auCount.textContent = auCount;
-
-    // Update plugin list
-    if (this.plugins.length === 0) {
-      this.pluginContainer.innerHTML = `
-        <div class="empty-state">
-          <h3>No plugins found</h3>
-          <p>Try scanning for plugins or check your plugin directories</p>
-        </div>
-      `;
-    } else {
-      this.renderPluginList();
-    }
   }
 
-  renderPluginList() {
-    const pluginHTML = this.plugins.map(plugin => {
+  clearAllFilters() {
+    this.vendorFilter.value = '';
+    this.formatFilter.value = '';
+    this.categoryFilter.value = '';
+    this.searchFilter.value = '';
+    this.applyFilters();
+  }
+
+  renderPluginList(pluginsToRender = null) {
+    const plugins = pluginsToRender || this.plugins;
+    const pluginHTML = plugins.map(plugin => {
       // Create format badges
       const formatBadges = plugin.formats.map(format => {
         const badgeColor = this.getFormatColor(format.format);
