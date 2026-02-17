@@ -116,7 +116,7 @@ class AbletonScanner {
 
       // Extract project info
       const projectName = this.extractProjectName(xmlString) || path.basename(alsFilePath, '.als');
-      const vstPlugins = this.extractVSTPlugins(xmlString);
+      const vstPlugins = this.extractVSTPlugins(xmlString, alsFilePath);
 
       return {
         name: projectName,
@@ -151,7 +151,7 @@ class AbletonScanner {
     return null; // Will fall back to filename
   }
 
-  extractVSTPlugins(xmlString) {
+  extractVSTPlugins(xmlString, alsFilePath) {
     const plugins = [];
     
     // DEBUG: Looking for ONLY loaded plugins (no browser history)
@@ -164,7 +164,7 @@ class AbletonScanner {
     console.log(`[AbletonScanner] DEBUG: Found ${vst3InfoCount} Vst3PluginInfo, ${vstInfoCount} VstPluginInfo elements`);
     
     // DEBUG: Show actual XML structure of first Vst3PluginInfo to understand format
-    if (vst3InfoCount > 0 && alsFilePath.includes('EP Drum Stems Full.als')) {
+    if (vst3InfoCount > 0 && alsFilePath && alsFilePath.includes('EP Drum Stems Full.als')) {
       const vst3Sample = xmlString.match(/<Vst3PluginInfo[^>]*>[\s\S]{0,800}?<\/Vst3PluginInfo>/);
       if (vst3Sample) {
         console.log(`[AbletonScanner] DEBUG: Sample Vst3PluginInfo XML structure from ${path.basename(alsFilePath)}:`);
