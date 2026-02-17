@@ -216,6 +216,13 @@ class AbletonScanner {
     }
 
     console.log(`[AbletonScanner] Found ${plugins.length} VST plugins in project:`, plugins);
+    
+    // DEBUG: If this project has a suspicious number of plugins, investigate
+    if (plugins.length > 20) {
+      console.log(`[AbletonScanner] WARNING: Project has ${plugins.length} plugins - this seems excessive!`);
+      console.log(`[AbletonScanner] DEBUG: First 10 plugins:`, plugins.slice(0, 10));
+    }
+    
     return plugins.sort();
   }
 

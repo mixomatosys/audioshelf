@@ -297,12 +297,18 @@ class Database {
     
     console.log(`[Database] DEBUG: Found ${abletonPluginNames.size} unique plugin names in Ableton projects:`);
     const sortedAbletonNames = Array.from(abletonPluginNames).sort();
-    sortedAbletonNames.slice(0, 20).forEach(name => {
+    sortedAbletonNames.slice(0, 10).forEach(name => {
       console.log(`[Database] DEBUG: Ableton plugin: "${name}"`);
     });
-    if (sortedAbletonNames.length > 20) {
-      console.log(`[Database] DEBUG: ... and ${sortedAbletonNames.length - 20} more`);
+    if (sortedAbletonNames.length > 10) {
+      console.log(`[Database] DEBUG: ... and ${sortedAbletonNames.length - 10} more`);
     }
+    
+    // DEBUG: Show plugin count per project to detect contamination
+    console.log(`[Database] DEBUG: Plugin count per project (first 5 projects):`);
+    projects.slice(0, 5).forEach(project => {
+      console.log(`[Database] DEBUG: "${project.name}" has ${project.vstPlugins.length} plugins: ${project.vstPlugins.slice(0, 5).join(', ')}${project.vstPlugins.length > 5 ? '...' : ''}`);
+    });
     
     console.log(`[Database] DEBUG: AudioShelf database has ${plugins.length} plugins. First 10:`);
     plugins.slice(0, 10).forEach(plugin => {
