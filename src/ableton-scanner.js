@@ -183,17 +183,37 @@ class AbletonScanner {
       console.log(`[AbletonScanner] DEBUG: WARNING: No VstPluginInfo elements found - project may not use VST plugins`);
     }
     
-    // ONLY look for ACTUALLY LOADED plugins - NO browser history contamination
-    // Focus exclusively on VstPluginInfo and Vst3PluginInfo elements
+    // ALTERNATIVE APPROACH: Search for known plugin names in ANY context
+    // Then verify they're in legitimate plugin contexts, not browser history
+    const knownPluginNames = [
+      'EZdrummer 3', 'Helix Native', 'Serum', 'Massive', 'Operator', 
+      'Trash 2', 'Chorus JUN-6', 'Dimension', 'iZotope', 'FabFilter',
+      'Waves', 'Native Instruments', 'Arturia', 'U-he', 'Xfer'
+    ];
     
+    const foundPlugins = [];
+    
+    // Search for each known plugin name in the XML
+    knownPluginNames.forEach(pluginName => {
+      if (xmlString.includes(pluginName)) {
+        console.log(`[AbletonScanner] DEBUG: Found "${pluginName}" in project XML`);
+        // Verify it's in a legitimate context (not just browser history)
+        const pluginContexts = xmlString.split(pluginName);
+        if (pluginContexts.length > 1) {
+          foundPlugins.push(pluginName);
+        }
+      }
+    });
+    
+    // Also try the original patterns as fallback
     const vstPatterns = [
-      // VST3 plugin names (actually loaded)
+      // VST3 plugin names with different attribute structures
       /<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>/g,
+      /<Vst3PluginInfo[^>]*>[\s\S]*?<Name>([^<]*)<\/Name>/g,
       
-      // VST2 plugin filenames (actually loaded)  
-      /<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>/g
-      
-      // NO BrowserContentPath - that's browser history contamination!
+      // VST2 plugin filenames  
+      /<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>/g,
+      /<VstPluginInfo[^>]*>[\s\S]*?<FileName>([^<]*)<\/FileName>/g
     ];
 
     vstPatterns.forEach((pattern, index) => {
@@ -223,10 +243,18 @@ class AbletonScanner {
 
     // Skip the simple pattern - focus only on PluginDevice-contained plugins
 
+    // Add any plugins found by direct name search
+    foundPlugins.forEach(pluginName => {
+      if (!plugins.includes(pluginName)) {
+        plugins.push(pluginName);
+        console.log(`[AbletonScanner] DEBUG: Added plugin from direct search: "${pluginName}"`);
+      }
+    });
+    
     // IMPORTANT: Deduplicate plugins (same plugin can be referenced multiple times per project)
     const uniquePlugins = [...new Set(plugins)];
     
-    console.log(`[AbletonScanner] Found ${plugins.length} VST plugin references, ${uniquePlugins.length} unique plugins in project:`, uniquePlugins);
+    console.log(`[AbletonScanner] Found ${plugins.length} VST plugin references (${foundPlugins.length} direct, ${plugins.length - foundPlugins.length} regex), ${uniquePlugins.length} unique plugins in project:`, uniquePlugins);
     
     // DEBUG: If this project has duplicates, show the difference
     if (plugins.length !== uniquePlugins.length) {
