@@ -1,12 +1,17 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
-// Enable live reload for Electron in development
+// Enable live reload for Electron in development (optional)
 if (process.argv.includes('--dev')) {
-  require('electron-reload')(__dirname, {
-    electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
-    hardResetMethod: 'exit'
-  });
+  try {
+    require('electron-reload')(__dirname, {
+      electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
+      hardResetMethod: 'exit'
+    });
+    console.log('Hot reload enabled');
+  } catch (error) {
+    console.log('Hot reload not available (electron-reload not installed)');
+  }
 }
 
 let mainWindow;
