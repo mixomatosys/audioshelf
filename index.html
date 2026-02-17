@@ -5,6 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AudioShelf - Plugin Inventory Manager</title>
   <style>
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #1a1a1a;
+      --bg-card: #222222;
+      --bg-card-hover: #2a2a2a;
+      --accent-primary: #6366f1;
+      --accent-secondary: #8b5cf6;
+      --accent-success: #10b981;
+      --accent-warning: #f59e0b;
+      --accent-danger: #ef4444;
+      --text-primary: #ffffff;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --border-color: #404040;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -12,10 +32,11 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-      color: white;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
       overflow: hidden;
+      line-height: 1.6;
     }
 
     .app-container {
@@ -24,235 +45,514 @@
       flex-direction: column;
     }
 
+    /* Modern Header */
     .header {
-      background: rgba(0,0,0,0.2);
-      padding: 20px;
-      text-align: center;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      background: var(--bg-secondary);
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
     }
 
-    .header h1 {
-      font-size: 2.5em;
-      margin-bottom: 10px;
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
     }
 
-    .header p {
-      opacity: 0.8;
-      font-size: 1.1em;
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
+    .header-title h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-title .emoji {
+      font-size: 2rem;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    }
+
+    /* Prominent Search Box */
+    .search-container {
+      position: relative;
+      flex: 1;
+      max-width: 400px;
+      min-width: 250px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 16px 12px 44px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+      background: var(--bg-primary);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .header-stats {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .stat-number {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    /* Main Content */
     .main-content {
       flex: 1;
       display: flex;
-      padding: 20px;
-      gap: 20px;
-      min-height: 0; /* Allow flex children to shrink */
-      height: calc(100vh - 120px); /* Set explicit height */
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 24px 32px;
+      gap: 24px;
+      min-height: 0;
     }
 
+    /* Modern Sidebar */
     .sidebar {
-      width: 300px;
-      background: rgba(0,0,0,0.3);
-      border-radius: 10px;
-      padding: 20px;
+      width: 320px;
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      padding: 24px;
+      height: fit-content;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-color);
     }
 
-    .plugin-list {
-      flex: 1;
-      background: rgba(0,0,0,0.3);
-      border-radius: 10px;
-      padding: 20px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      max-height: calc(100vh - 140px);
-      -webkit-overflow-scrolling: touch; /* Smooth scrolling on Mac */
+    .sidebar-section {
+      margin-bottom: 32px;
     }
 
-    .scan-button {
-      background: #4CAF50;
+    .sidebar-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .sidebar-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Modern Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: var(--accent-primary);
       color: white;
       border: none;
-      padding: 15px 30px;
-      font-size: 1.1em;
-      border-radius: 8px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
       cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn:hover {
+      background: var(--accent-secondary);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-success {
+      background: var(--accent-success);
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    .btn-warning {
+      background: var(--accent-warning);
+    }
+
+    .btn-warning:hover {
+      background: #d97706;
+    }
+
+    .btn-full {
       width: 100%;
-      margin-bottom: 20px;
-      transition: all 0.3s ease;
     }
 
-    .scan-button:hover {
-      background: #45a049;
-      transform: translateY(-2px);
-    }
-
-    .scan-button:disabled {
-      background: #666;
+    .btn:disabled {
+      opacity: 0.6;
       cursor: not-allowed;
       transform: none;
     }
 
-    .status {
-      background: rgba(0,0,0,0.2);
-      padding: 15px;
-      border-radius: 8px;
+    .btn-icon {
+      padding: 10px;
+      min-width: 40px;
+      border-radius: 10px;
+    }
+
+    /* Status Card */
+    .status-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
       margin-bottom: 20px;
-      border-left: 4px solid #4CAF50;
     }
 
-    .stats {
-      list-style: none;
+    .status-text {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
     }
 
-    .stats li {
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+    /* Modern Form Elements */
+    .form-group {
+      margin-bottom: 16px;
     }
 
-    .stats li:last-child {
-      border-bottom: none;
+    .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    .plugin-item {
-      background: rgba(255,255,255,0.1);
-      margin-bottom: 15px;
-      padding: 18px;
+    .form-control {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
-      border-left: 4px solid #4CAF50;
-      transition: background 0.2s ease;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .form-control option {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+
+    /* Stats List */
+    .stats-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .stats-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      font-size: 0.9rem;
+    }
+
+    .stats-label {
+      color: var(--text-secondary);
+    }
+
+    .stats-value {
+      font-weight: 600;
+      color: var(--text-primary);
+      background: var(--bg-card);
+      padding: 4px 8px;
+      border-radius: 6px;
+      min-width: 32px;
+      text-align: center;
+    }
+
+    /* Plugin List */
+    .plugin-list {
+      flex: 1;
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      padding: 24px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-md);
+    }
+
+    .plugin-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Modern Plugin Cards */
+    .plugin-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
     }
 
     .plugin-item:hover {
-      background: rgba(255,255,255,0.15);
+      background: var(--bg-card-hover);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--accent-primary);
     }
 
-    .plugin-name {
-      font-weight: bold;
-      font-size: 1.2em;
-      margin-bottom: 8px;
-      color: #ffffff;
-    }
-
-    .plugin-info {
-      opacity: 0.8;
-      font-size: 0.9em;
-    }
-
-    .empty-state {
-      text-align: center;
-      opacity: 0.6;
-      padding: 40px 20px;
-    }
-
-    .empty-state h3 {
-      margin-bottom: 10px;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 40px 20px;
-    }
-
-    .loading::after {
-      content: '...';
-      animation: dots 1s steps(5, end) infinite;
-    }
-
-    @keyframes dots {
-      0%, 20% { color: rgba(255,255,255,0.0); text-shadow: 0.25em 0 0 rgba(255,255,255,0.0), 0.5em 0 0 rgba(255,255,255,0.0); }
-      40% { color: white; text-shadow: 0.25em 0 0 rgba(255,255,255,0.0), 0.5em 0 0 rgba(255,255,255,0.0); }
-      60% { text-shadow: 0.25em 0 0 white, 0.5em 0 0 rgba(255,255,255,0.0); }
-      80%, 100% { text-shadow: 0.25em 0 0 white, 0.5em 0 0 white; }
-    }
-
-    /* Custom scrollbar for plugin list */
-    .plugin-list::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    .plugin-list::-webkit-scrollbar-track {
-      background: rgba(255,255,255,0.1);
-      border-radius: 4px;
-    }
-
-    .plugin-list::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,0.3);
-      border-radius: 4px;
-    }
-
-    .plugin-list::-webkit-scrollbar-thumb:hover {
-      background: rgba(255,255,255,0.5);
-    }
-
-    #pluginContainer {
+    .plugin-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
       height: 100%;
-      overflow-y: auto;
+      background: var(--accent-primary);
+      transform: scaleY(0);
+      transition: transform 0.2s ease;
     }
 
-    /* Filter Styles */
-    .filters {
-      background: rgba(0,0,0,0.2);
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      border-left: 4px solid #2196F3;
+    .plugin-item:hover::before {
+      transform: scaleY(1);
     }
 
-    .filters h3 {
-      margin-bottom: 15px;
-      color: #ffffff;
-    }
-
-    .filter-group {
+    .plugin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
       margin-bottom: 12px;
     }
 
-    .filter-group label {
-      display: block;
+    .plugin-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
       margin-bottom: 4px;
-      font-weight: bold;
-      font-size: 0.9em;
-      color: rgba(255,255,255,0.9);
     }
 
-    .filter-group select,
-    .filter-group input {
-      width: 100%;
-      padding: 8px 10px;
-      border-radius: 4px;
-      border: 1px solid rgba(255,255,255,0.3);
-      background: rgba(255,255,255,0.1);
-      color: white;
-      font-size: 0.9em;
+    .plugin-vendor {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    .filter-group select:focus,
-    .filter-group input:focus {
-      outline: none;
-      border-color: #4CAF50;
-      background: rgba(255,255,255,0.15);
+    .plugin-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: 500;
     }
 
-    .filter-group select option {
-      background: #2a3f5f;
-      color: white;
+    .plugin-status.installed {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--accent-success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
     }
 
-    .filter-clear {
-      width: 100%;
-      padding: 8px;
-      background: #f44336;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.85em;
+    .plugin-status.missing {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--accent-danger);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .plugin-formats {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .format-badge {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .format-vst {
+      background: rgba(255, 107, 53, 0.2);
+      color: #ff6b35;
+      border: 1px solid rgba(255, 107, 53, 0.3);
+    }
+
+    .format-vst3 {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
+      border: 1px solid rgba(76, 175, 80, 0.3);
+    }
+
+    .format-au {
+      background: rgba(33, 150, 243, 0.2);
+      color: #2196f3;
+      border: 1px solid rgba(33, 150, 243, 0.3);
+    }
+
+    .demo-badge {
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--accent-warning);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .plugin-description {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      line-height: 1.4;
       margin-top: 8px;
-      transition: background 0.2s ease;
     }
 
-    .filter-clear:hover {
-      background: #d32f2f;
+    .plugin-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .tag {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--accent-primary);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+    }
+
+    /* Empty States */
+    .empty-state {
+      text-align: center;
+      padding: 60px 40px;
+      color: var(--text-muted);
+    }
+
+    .empty-state h3 {
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state p {
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    /* Loading States */
+    .loading {
+      text-align: center;
+      padding: 60px 40px;
+      color: var(--text-secondary);
+    }
+
+    .loading::after {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border-color);
+      border-radius: 50%;
+      border-top-color: var(--accent-primary);
+      animation: spin 1s ease-in-out infinite;
+      margin-top: 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Scrollbar */
+    .plugin-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .plugin-list::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+      border-radius: 3px;
+    }
+
+    .plugin-list::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 3px;
+    }
+
+    .plugin-list::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
     }
 
     /* Plugin Detail View Styles */
@@ -260,45 +560,49 @@
       height: 100vh;
       display: none;
       flex-direction: column;
-      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-      color: white;
+      background: var(--bg-primary);
+      color: var(--text-primary);
       overflow: hidden;
     }
 
     .detail-header {
-      background: rgba(0,0,0,0.3);
-      padding: 20px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      background: var(--bg-secondary);
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
       gap: 20px;
     }
 
     .back-button {
-      background: rgba(255,255,255,0.2);
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 6px;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      padding: 8px 16px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 0.9em;
-      transition: background 0.2s ease;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
     }
 
     .back-button:hover {
-      background: rgba(255,255,255,0.3);
+      background: var(--bg-card-hover);
+      transform: translateY(-1px);
     }
 
     .detail-header h1 {
-      font-size: 2.5em;
+      font-size: 2rem;
       margin: 0;
     }
 
     .detail-content {
       flex: 1;
       display: flex;
-      padding: 20px;
-      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 24px 32px;
+      gap: 24px;
       overflow: hidden;
     }
 
@@ -315,16 +619,17 @@
     }
 
     .detail-card {
-      background: rgba(0,0,0,0.3);
-      border-radius: 10px;
-      padding: 20px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
       margin-bottom: 20px;
     }
 
     .detail-card h3 {
-      margin-bottom: 15px;
-      color: #ffffff;
-      font-size: 1.2em;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+      font-size: 1.1rem;
     }
 
     .detail-info {
@@ -340,14 +645,15 @@
     }
 
     .detail-label {
-      font-weight: bold;
-      opacity: 0.8;
+      font-weight: 500;
+      color: var(--text-secondary);
       min-width: 80px;
     }
 
     .detail-value {
       text-align: right;
       flex: 1;
+      color: var(--text-primary);
     }
 
     .tags-display {
@@ -357,15 +663,16 @@
     }
 
     .tag-pill {
-      background: rgba(255,255,255,0.2);
+      background: rgba(99, 102, 241, 0.2);
       padding: 4px 10px;
       border-radius: 12px;
-      font-size: 0.85em;
+      font-size: 0.8rem;
+      color: var(--accent-primary);
     }
 
     .no-usage {
       text-align: center;
-      opacity: 0.7;
+      color: var(--text-muted);
       padding: 30px 20px;
     }
 
@@ -376,88 +683,160 @@
     }
 
     .project-item {
-      background: rgba(255,255,255,0.1);
-      padding: 15px;
+      background: var(--bg-card);
+      padding: 16px;
       border-radius: 8px;
-      border-left: 4px solid #4CAF50;
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--accent-success);
     }
 
     .project-name {
-      font-weight: bold;
-      font-size: 1.1em;
-      margin-bottom: 5px;
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 6px;
+      color: var(--text-primary);
     }
 
     .project-info {
       display: flex;
       flex-direction: column;
       gap: 2px;
-      opacity: 0.8;
-      font-size: 0.9em;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
     }
 
     .project-file {
-      color: #4CAF50;
+      color: var(--accent-success);
     }
 
     .project-date {
-      color: #2196F3;
+      color: var(--accent-primary);
     }
 
-    /* Scrollbar styles for detail views */
-    .detail-sidebar::-webkit-scrollbar,
-    .detail-main::-webkit-scrollbar {
-      width: 8px;
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+      .main-content {
+        padding: 16px 20px;
+      }
+      
+      .sidebar {
+        width: 280px;
+      }
     }
 
-    .detail-sidebar::-webkit-scrollbar-track,
-    .detail-main::-webkit-scrollbar-track {
-      background: rgba(255,255,255,0.1);
-      border-radius: 4px;
+    @media (max-width: 968px) {
+      .header-content {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .search-container {
+        max-width: none;
+        width: 100%;
+      }
+      
+      .main-content {
+        flex-direction: column;
+      }
+      
+      .sidebar {
+        width: 100%;
+        order: 2;
+      }
+      
+      .plugin-list {
+        order: 1;
+        max-height: 60vh;
+      }
     }
 
-    .detail-sidebar::-webkit-scrollbar-thumb,
-    .detail-main::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,0.3);
-      border-radius: 4px;
-    }
-
-    .detail-sidebar::-webkit-scrollbar-thumb:hover,
-    .detail-main::-webkit-scrollbar-thumb:hover {
-      background: rgba(255,255,255,0.5);
+    @media (max-width: 640px) {
+      .header {
+        padding: 16px 20px;
+      }
+      
+      .main-content {
+        padding: 12px 16px;
+      }
+      
+      .sidebar,
+      .plugin-list {
+        padding: 16px;
+      }
+      
+      .plugin-item {
+        padding: 16px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="app-container">
     <div class="header">
-      <h1>🎵 AudioShelf</h1>
-      <p>Your Plugin Inventory Manager</p>
+      <div class="header-content">
+        <div class="header-title">
+          <span class="emoji">🎵</span>
+          <h1>AudioShelf</h1>
+        </div>
+        
+        <div class="search-container">
+          <div class="search-icon">🔍</div>
+          <input 
+            type="text" 
+            id="globalSearchInput" 
+            class="search-input" 
+            placeholder="Search plugins..."
+          />
+        </div>
+        
+        <div class="header-stats">
+          <div class="stat-item">
+            <span class="stat-number" id="headerTotalCount">0</span>
+            <span class="stat-label">Total</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number" id="headerVisibleCount">0</span>
+            <span class="stat-label">Visible</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="main-content">
       <div class="sidebar">
-        <button class="scan-button" id="scanButton">🔍 Scan Plugins</button>
-        <!-- <button class="scan-button" id="scanAbletonButton" style="background: #FF9800; margin-bottom: 5px;">🎵 Scan Ableton Projects</button> -->
-        <button class="scan-button" id="exportButton" style="background: #2196F3; margin-bottom: 10px;">📋 Export List</button>
-        
-        <div class="status">
-          <strong>Status:</strong> <span id="statusText">Ready to scan</span>
+        <div class="sidebar-section">
+          <div class="sidebar-title">🚀 Actions</div>
+          <button class="btn btn-success btn-full" id="scanButton">
+            <span>🔍</span>
+            Scan Plugins
+          </button>
+          <br><br>
+          <button class="btn btn-warning btn-full" id="exportButton">
+            <span>📋</span>
+            Export List
+          </button>
         </div>
 
-        <div class="filters">
-          <h3>🔍 Filters</h3>
+        <div class="sidebar-section">
+          <div class="status-card">
+            <div class="sidebar-title">📊 Status</div>
+            <div class="status-text" id="statusText">Ready to scan</div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-title">🎛️ Filters</div>
           
-          <div class="filter-group">
-            <label>Vendor:</label>
-            <select id="vendorFilter">
+          <div class="form-group">
+            <label class="form-label">Vendor</label>
+            <select id="vendorFilter" class="form-control">
               <option value="">All Vendors</option>
             </select>
           </div>
           
-          <div class="filter-group">
-            <label>Format:</label>
-            <select id="formatFilter">
+          <div class="form-group">
+            <label class="form-label">Format</label>
+            <select id="formatFilter" class="form-control">
               <option value="">All Formats</option>
               <option value="VST">VST</option>
               <option value="VST3">VST3</option>
@@ -465,32 +844,43 @@
             </select>
           </div>
           
-          <div class="filter-group">
-            <label>Category:</label>
-            <select id="categoryFilter">
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select id="categoryFilter" class="form-control">
               <option value="">All Categories</option>
             </select>
           </div>
           
-          <div class="filter-group">
-            <label>Search:</label>
-            <input type="text" id="searchFilter" placeholder="Plugin name..." />
-          </div>
-          
-          <button class="filter-clear" id="clearFilters">Clear All</button>
+          <button class="btn btn-full" id="clearFilters" style="background: var(--accent-danger);">
+            Clear Filters
+          </button>
         </div>
 
-        <h3>Statistics</h3>
-        <ul class="stats">
-          <li>Showing: <strong id="visibleCount">0</strong> / <strong id="totalCount">0</strong></li>
-          <li>VST: <strong id="vstCount">0</strong></li>
-          <li>VST3: <strong id="vst3Count">0</strong></li>
-          <li>AU: <strong id="auCount">0</strong></li>
-        </ul>
+        <div class="sidebar-section">
+          <div class="sidebar-title">📈 Statistics</div>
+          <ul class="stats-list">
+            <li class="stats-item">
+              <span class="stats-label">Showing</span>
+              <span class="stats-value"><span id="visibleCount">0</span> / <span id="totalCount">0</span></span>
+            </li>
+            <li class="stats-item">
+              <span class="stats-label">VST</span>
+              <span class="stats-value" id="vstCount">0</span>
+            </li>
+            <li class="stats-item">
+              <span class="stats-label">VST3</span>
+              <span class="stats-value" id="vst3Count">0</span>
+            </li>
+            <li class="stats-item">
+              <span class="stats-label">AU</span>
+              <span class="stats-value" id="auCount">0</span>
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div class="plugin-list">
-        <div id="pluginContainer" tabindex="0">
+        <div id="pluginContainer" class="plugin-container">
           <div class="empty-state">
             <h3>No plugins scanned yet</h3>
             <p>Click "Scan Plugins" to discover your installed VST/AU plugins</p>

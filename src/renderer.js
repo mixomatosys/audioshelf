@@ -18,7 +18,6 @@ class AudioShelfApp {
   initializeUI() {
     // Get DOM elements
     this.scanButton = document.getElementById('scanButton');
-    // this.scanAbletonButton = document.getElementById('scanAbletonButton');
     this.exportButton = document.getElementById('exportButton');
     this.statusText = document.getElementById('statusText');
     this.pluginContainer = document.getElementById('pluginContainer');
@@ -28,11 +27,15 @@ class AudioShelfApp {
     this.vst3Count = document.getElementById('vst3Count');
     this.auCount = document.getElementById('auCount');
     
+    // Header elements
+    this.headerTotalCount = document.getElementById('headerTotalCount');
+    this.headerVisibleCount = document.getElementById('headerVisibleCount');
+    
     // Filter elements
     this.vendorFilter = document.getElementById('vendorFilter');
     this.formatFilter = document.getElementById('formatFilter');
     this.categoryFilter = document.getElementById('categoryFilter');
-    this.searchFilter = document.getElementById('searchFilter');
+    this.globalSearchInput = document.getElementById('globalSearchInput');
     this.clearFilters = document.getElementById('clearFilters');
 
     // Bind events
