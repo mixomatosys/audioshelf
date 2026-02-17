@@ -154,53 +154,16 @@ class AbletonScanner {
   extractVSTPlugins(xmlString) {
     const plugins = [];
     
-    // DEBUG: Let's see what kind of plugin-related XML elements exist
-    console.log('[AbletonScanner] DEBUG: Looking for plugin patterns...');
-    
-    // Look for any XML elements that might contain plugin info
-    const debugPatterns = [
-      'PluginDesc',
-      'VstPluginInfo', 
-      'Vst3PluginInfo',
-      'PluginName',
-      'FileName',
-      'Name.*Value=',
-      'VST',
-      'vst'
-    ];
-    
-    debugPatterns.forEach(pattern => {
-      const regex = new RegExp(pattern, 'gi');
-      const matches = xmlString.match(regex);
-      if (matches) {
-        console.log(`[AbletonScanner] DEBUG: Found ${matches.length} matches for "${pattern}": ${matches.slice(0, 5).join(', ')}${matches.length > 5 ? '...' : ''}`);
-      }
-    });
-
-    // Let's also look for a sample of XML around plugin-related content
-    const sampleMatch = xmlString.match(/<[^>]*(?:plugin|vst|Plugin|VST)[^>]*>[\s\S]{0,200}/i);
-    if (sampleMatch) {
-      console.log('[AbletonScanner] DEBUG: Sample plugin XML:', sampleMatch[0]);
-    }
+    // DEBUG: Simplified debugging now that we know the structure
+    console.log('[AbletonScanner] DEBUG: Extracting plugins from BrowserContentPath elements...');
     
     // Look for VST plugin references in the XML
-    // Based on actual XML structure: <PluginDevice> containers with plugin info
+    // Based on discovered XML structure: BrowserContentPath contains plugin info
     
     const vstPatterns = [
-      // VST3 plugins within PluginDevice containers
-      /<PluginDevice[^>]*>[\s\S]*?<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/Vst3PluginInfo>[\s\S]*?<\/PluginDevice>/g,
-      
-      // VST2 plugins within PluginDevice containers  
-      /<PluginDevice[^>]*>[\s\S]*?<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/VstPluginInfo>[\s\S]*?<\/PluginDevice>/g,
-      
-      // Alternative VST3 pattern
-      /<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/Vst3PluginInfo>/g,
-      
-      // Alternative VST2 pattern
-      /<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>[\s\S]*?<\/VstPluginInfo>/g,
-      
-      // File names with VST extensions
-      /<FileName[^>]*Value="([^"]*\.(?:vst3?|dll))"[^>]*\/>/gi
+      // Plugin names in BrowserContentPath (primary pattern)  
+      // Format: query:Plugins#VST3:Toontrack:EZdrummer%203
+      /<BrowserContentPath[^>]*Value="query:Plugins#(?:VST3?|AU):[^:]*:([^"]*)"[^>]*\/>/g
     ];
 
     vstPatterns.forEach((pattern, index) => {
@@ -212,14 +175,23 @@ class AbletonScanner {
         let rawPluginName = match[1];
         console.log(`[AbletonScanner] DEBUG: Raw plugin name from pattern ${index + 1}: "${rawPluginName}"`);
         
+        // URL decode the plugin name (convert %20 to spaces, etc.)
+        let decodedPluginName;
+        try {
+          decodedPluginName = decodeURIComponent(rawPluginName);
+        } catch (error) {
+          decodedPluginName = rawPluginName; // Fallback if decoding fails
+        }
+        console.log(`[AbletonScanner] DEBUG: URL decoded: "${rawPluginName}" → "${decodedPluginName}"`);
+        
         // Clean up the plugin name
-        let cleanedPluginName = this.cleanPluginName(rawPluginName);
+        let cleanedPluginName = this.cleanPluginName(decodedPluginName);
         
         if (cleanedPluginName && !plugins.includes(cleanedPluginName)) {
           plugins.push(cleanedPluginName);
-          console.log(`[AbletonScanner] DEBUG: ACCEPTED plugin via pattern ${index + 1}: "${rawPluginName}" → "${cleanedPluginName}"`);
+          console.log(`[AbletonScanner] DEBUG: ACCEPTED plugin via pattern ${index + 1}: "${decodedPluginName}" → "${cleanedPluginName}"`);
         } else if (!cleanedPluginName) {
-          console.log(`[AbletonScanner] DEBUG: FILTERED OUT plugin: "${rawPluginName}" (cleaned to null)`);
+          console.log(`[AbletonScanner] DEBUG: FILTERED OUT plugin: "${decodedPluginName}" (cleaned to null)`);
         }
       }
       if (patternMatches > 0) {
@@ -250,33 +222,11 @@ class AbletonScanner {
   cleanPluginName(rawName) {
     if (!rawName) return null;
 
-    // Remove file extensions
-    let cleaned = rawName.replace(/\.(dll|vst|vst3|component)$/i, '');
-    
-    // Remove common prefixes/suffixes
-    cleaned = cleaned.replace(/^(vst_|au_|rtas_)/i, '');
-    cleaned = cleaned.replace(/(_x64|_x86|_64bit|_32bit)$/i, '');
-    
     // Trim whitespace
-    cleaned = cleaned.trim();
+    let cleaned = rawName.trim();
     
     // Skip empty or very short names
     if (!cleaned || cleaned.length < 2) return null;
-    
-    // Skip obvious non-plugin names
-    const nonPluginPatterns = [
-      /^(Track|Audio|Lane|Major|FX)\s*\d*$/i,  // Track 1, Audio, Audio 2, Lane, Major, FX2
-      /^\d+-.*$/,  // Numbers at start like "1-Dark Poly Pad"
-      /^Audio\s+\d+(\s+\[.*\])*(\s+\d+)*$/i,  // Audio 15 [timestamp] 16
-      /^Rhythm\s+\d+(\s+\d+)*$/i,  // Rhythm 1 22
-      /bpm$/i,  // Ends with bpm like "Hard Clap Drums 122bpm"
-      /^\[.*\]$/,  // Wrapped in brackets
-      /\d{4}-\d{2}-\d{2}\s+\d{6}/  // Contains timestamps
-    ];
-    
-    for (const pattern of nonPluginPatterns) {
-      if (pattern.test(cleaned)) return null;
-    }
     
     // Skip common Ableton built-in devices (these aren't VSTs)
     const builtInDevices = [
@@ -289,6 +239,8 @@ class AbletonScanner {
     
     if (builtInDevices.includes(cleaned)) return null;
     
+    // Since we're now extracting from BrowserContentPath, we should get clean plugin names
+    // No need for aggressive filtering of track names, audio clips, etc.
     return cleaned;
   }
 
