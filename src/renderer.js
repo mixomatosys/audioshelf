@@ -128,12 +128,11 @@ class AudioShelfApp {
       // Add demo indicator
       const demoIndicator = plugin.isDemo ? '<span style="background: #FF9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-right: 4px;">DEMO</span>' : '';
       
-      // Add metadata indicators
-      const metadataIndicator = plugin.hasMetadata ? '<span style="background: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-right: 4px;">✓</span>' : '';
-      const needsMetadataIndicator = plugin.needsMetadata ? '<span style="background: #757575; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-right: 4px;">?</span>' : '';
-      
       // Enhanced category display
       const categoryText = plugin.subcategory ? `${plugin.subcategory}` : plugin.category;
+      
+      // Version display (only show if we have a real version)
+      const versionDisplay = plugin.version && plugin.version !== '?' ? `v${plugin.version} • ` : '';
       
       // Tags display
       const tagsDisplay = plugin.tags && plugin.tags.length > 0 ? 
@@ -155,9 +154,7 @@ class AudioShelfApp {
             ${categoryText || 'Other'} • 
             ${formatBadges} • 
             ${demoIndicator}
-            ${metadataIndicator}
-            ${needsMetadataIndicator}
-            v${plugin.version || '?'} • 
+            ${versionDisplay}
             <span style="color: ${statusColor}">
               ${statusText}
             </span>
