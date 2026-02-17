@@ -81,18 +81,36 @@ class AbletonScanner {
       if (alsFilePath.includes('Intrigue and the Beacon')) {
         console.log('[AbletonScanner] DEBUG: Looking for VST plugin XML structure...');
         
+        // Search for common plugin names to see how they appear in XML
+        const knownPlugins = ['EZdrummer', 'Trash', 'Helix', 'Native', 'iZotope', 'Serum', 'Massive'];
+        knownPlugins.forEach(pluginName => {
+          if (xmlString.includes(pluginName)) {
+            console.log(`[AbletonScanner] DEBUG: Found "${pluginName}" in XML! Looking for context...`);
+            
+            // Find 200 chars before and after the plugin name
+            const index = xmlString.indexOf(pluginName);
+            const start = Math.max(0, index - 200);
+            const end = Math.min(xmlString.length, index + pluginName.length + 200);
+            const context = xmlString.substring(start, end);
+            
+            console.log(`[AbletonScanner] DEBUG: Context around "${pluginName}": ...${context}...`);
+          }
+        });
+        
         // Find and show actual Vst3PluginInfo sections
         const vst3Matches = xmlString.match(/<Vst3PluginInfo[^>]*>[\s\S]{0,500}?<\/Vst3PluginInfo>/g);
         if (vst3Matches) {
-          console.log(`[AbletonScanner] DEBUG: Found ${vst3Matches.length} Vst3PluginInfo sections. First one:`);
-          console.log(vst3Matches[0]);
+          console.log(`[AbletonScanner] DEBUG: Found ${vst3Matches.length} Vst3PluginInfo sections. First 2:`);
+          console.log('VST3 #1:', vst3Matches[0]);
+          if (vst3Matches[1]) console.log('VST3 #2:', vst3Matches[1]);
         }
         
         // Find PluginDevice sections
         const pluginDeviceMatches = xmlString.match(/<PluginDevice[^>]*>[\s\S]{0,800}?<\/PluginDevice>/g);
         if (pluginDeviceMatches) {
-          console.log(`[AbletonScanner] DEBUG: Found ${pluginDeviceMatches.length} PluginDevice sections. First one:`);
-          console.log(pluginDeviceMatches[0]);
+          console.log(`[AbletonScanner] DEBUG: Found ${pluginDeviceMatches.length} PluginDevice sections. First 2:`);
+          console.log('PluginDevice #1:', pluginDeviceMatches[0]);
+          if (pluginDeviceMatches[1]) console.log('PluginDevice #2:', pluginDeviceMatches[1]);
         }
       }
 
