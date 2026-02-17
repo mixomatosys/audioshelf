@@ -46,6 +46,8 @@
       display: flex;
       padding: 20px;
       gap: 20px;
+      min-height: 0; /* Allow flex children to shrink */
+      height: calc(100vh - 120px); /* Set explicit height */
     }
 
     .sidebar {
@@ -61,6 +63,9 @@
       border-radius: 10px;
       padding: 20px;
       overflow-y: auto;
+      overflow-x: hidden;
+      max-height: calc(100vh - 140px);
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on Mac */
     }
 
     .scan-button {
@@ -153,6 +158,30 @@
       60% { text-shadow: 0.25em 0 0 white, 0.5em 0 0 rgba(255,255,255,0.0); }
       80%, 100% { text-shadow: 0.25em 0 0 white, 0.5em 0 0 white; }
     }
+
+    /* Custom scrollbar for plugin list */
+    .plugin-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .plugin-list::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+    }
+
+    .plugin-list::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.3);
+      border-radius: 4px;
+    }
+
+    .plugin-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.5);
+    }
+
+    #pluginContainer {
+      height: 100%;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
@@ -180,7 +209,7 @@
       </div>
 
       <div class="plugin-list">
-        <div id="pluginContainer">
+        <div id="pluginContainer" tabindex="0">
           <div class="empty-state">
             <h3>No plugins scanned yet</h3>
             <p>Click "Scan Plugins" to discover your installed VST/AU plugins</p>

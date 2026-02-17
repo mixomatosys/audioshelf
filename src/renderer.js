@@ -144,3 +144,35 @@ window.addEventListener('focus', () => {
 window.addEventListener('blur', () => {
   console.log('App blurred');
 });
+
+// Add keyboard shortcuts for scrolling
+window.addEventListener('keydown', (event) => {
+  const pluginContainer = document.getElementById('pluginContainer');
+  
+  switch(event.key) {
+    case 'ArrowDown':
+      event.preventDefault();
+      pluginContainer.scrollTop += 100;
+      break;
+    case 'ArrowUp':
+      event.preventDefault();
+      pluginContainer.scrollTop -= 100;
+      break;
+    case 'PageDown':
+      event.preventDefault();
+      pluginContainer.scrollTop += pluginContainer.clientHeight - 50;
+      break;
+    case 'PageUp':
+      event.preventDefault();
+      pluginContainer.scrollTop -= pluginContainer.clientHeight - 50;
+      break;
+    case 'Home':
+      event.preventDefault();
+      pluginContainer.scrollTop = 0;
+      break;
+    case 'End':
+      event.preventDefault();
+      pluginContainer.scrollTop = pluginContainer.scrollHeight;
+      break;
+  }
+});
