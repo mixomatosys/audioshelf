@@ -1,0 +1,55 @@
+{
+  "pluginUrls": {
+    "serum": {
+      "name": "Serum",
+      "vendor": "Xfer Records", 
+      "url": "https://xferrecords.com/products/serum",
+      "type": "paid",
+      "category": "Synthesizer"
+    },
+    "helm": {
+      "name": "Helm",
+      "vendor": "Matt Tytel",
+      "url": "https://tytel.org/helm/",
+      "type": "free",
+      "category": "Synthesizer"
+    },
+    "dexed": {
+      "name": "Dexed",
+      "vendor": "Digital Suburban",
+      "url": "https://asb2m10.github.io/dexed/",
+      "type": "free", 
+      "category": "Synthesizer"
+    },
+    "tal-reverb-4": {
+      "name": "TAL-Reverb-4",
+      "vendor": "TAL Software",
+      "url": "https://tal-software.com/products/tal-reverb-4",
+      "type": "free",
+      "category": "Effect"
+    },
+    "orilriver": {
+      "name": "OrilRiver",
+      "vendor": "Denis Tihanov",
+      "url": "https://www.kvraudio.com/product/orilriver-by-denis-tihanov",
+      "type": "free",
+      "category": "Effect"
+    },
+    "reaper-js-effects": {
+      "name": "REAPER JS Effects",
+      "vendor": "Cockos",
+      "url": "https://www.reaper.fm/jsfx/",
+      "type": "free",
+      "category": "Effect"
+    }
+  },
+  "metadata": {
+    "lastUpdated": "2026-02-17",
+    "totalPlugins": 6,
+    "sources": [
+      "Plugin developer websites",
+      "KVR Audio database",
+      "Community recommendations"
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "name": "audioshelf",
+  "version": "0.1.0",
+  "description": "A cross-platform plugin inventory manager for VST/VST3/AU audio plugins",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "echo \"Build script coming soon\"",
+    "test": "echo \"Tests coming soon\""
+  },
+  "keywords": [
+    "vst",
+    "au",
+    "plugins",
+    "audio",
+    "music-production",
+    "inventory",
+    "electron"
+  ],
+  "author": "mixomatosys",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mixomatosys/audioshelf.git"
+  },
+  "homepage": "https://github.com/mixomatosys/audioshelf#readme",
+  "devDependencies": {
+    "electron": "^33.0.0"
+  },
+  "dependencies": {
+    "fs-extra": "^11.1.1",
+    "path": "^0.12.7"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
