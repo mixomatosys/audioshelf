@@ -3,11 +3,13 @@
 const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
+const PluginMetadata = require('./metadata.js');
 
 class PluginScanner {
   constructor() {
     this.platform = os.platform();
     this.pluginPaths = this.getPluginPaths();
+    this.metadata = new PluginMetadata();
   }
 
   getPluginPaths() {
@@ -81,7 +83,17 @@ class PluginScanner {
       // Consolidate plugins by name (combine different formats of the same plugin)
       const consolidatedPlugins = this.consolidatePlugins(allPlugins);
       console.log(`[Scanner] Found ${allPlugins.length} plugin installations, ${consolidatedPlugins.length} unique plugins`);
-      return consolidatedPlugins;
+      
+      // Enhance plugins with metadata
+      console.log('[Scanner] Enhancing plugins with metadata...');
+      const enrichedPlugins = consolidatedPlugins.map(plugin => this.metadata.enrichPlugin(plugin));
+      const withMetadata = enrichedPlugins.filter(p => p.hasMetadata).length;
+      console.log(`[Scanner] Enhanced ${withMetadata}/${enrichedPlugins.length} plugins with metadata`);
+      
+      // Save list of plugins that need metadata for future curation
+      await this.metadata.saveMissingPlugins(enrichedPlugins);
+      
+      return enrichedPlugins;
 
     } catch (error) {
       console.error('[Scanner] Scan failed:', error);

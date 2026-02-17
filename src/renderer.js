@@ -125,19 +125,43 @@ class AudioShelfApp {
 
       // Add demo indicator
       const demoIndicator = plugin.isDemo ? '<span style="background: #FF9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-right: 4px;">DEMO</span>' : '';
+      
+      // Add metadata indicators
+      const metadataIndicator = plugin.hasMetadata ? '<span style="background: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-right: 4px;">✓</span>' : '';
+      const needsMetadataIndicator = plugin.needsMetadata ? '<span style="background: #757575; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-right: 4px;">?</span>' : '';
+      
+      // Enhanced category display
+      const categoryText = plugin.subcategory ? `${plugin.subcategory}` : plugin.category;
+      
+      // Tags display
+      const tagsDisplay = plugin.tags && plugin.tags.length > 0 ? 
+        `<div style="margin-top: 4px; font-size: 0.75em; opacity: 0.8;">
+          ${plugin.tags.slice(0, 3).map(tag => `<span style="background: rgba(255,255,255,0.1); padding: 1px 4px; border-radius: 2px; margin-right: 4px;">${tag}</span>`).join('')}
+        </div>` : '';
+      
+      // Description display  
+      const descriptionDisplay = plugin.description && plugin.description !== `${plugin.category || 'Audio plugin'} by ${plugin.vendor || 'Unknown'}` ?
+        `<div style="margin-top: 6px; font-size: 0.85em; opacity: 0.9; line-height: 1.3;">
+          ${plugin.description}
+        </div>` : '';
 
       return `
         <div class="plugin-item">
           <div class="plugin-name">${plugin.name}</div>
           <div class="plugin-info">
             ${plugin.vendor || 'Unknown Vendor'} • 
+            ${categoryText || 'Other'} • 
             ${formatBadges} • 
             ${demoIndicator}
+            ${metadataIndicator}
+            ${needsMetadataIndicator}
             v${plugin.version || '?'} • 
             <span style="color: ${statusColor}">
               ${statusText}
             </span>
           </div>
+          ${descriptionDisplay}
+          ${tagsDisplay}
         </div>
       `;
     }).join('');
