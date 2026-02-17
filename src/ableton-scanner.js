@@ -179,14 +179,17 @@ class AbletonScanner {
       let patternMatches = 0;
       while ((match = pattern.exec(xmlString)) !== null) {
         patternMatches++;
-        let pluginName = match[1];
+        let rawPluginName = match[1];
+        console.log(`[AbletonScanner] DEBUG: Raw plugin name from pattern ${index + 1}: "${rawPluginName}"`);
         
         // Clean up the plugin name
-        pluginName = this.cleanPluginName(pluginName);
+        let cleanedPluginName = this.cleanPluginName(rawPluginName);
         
-        if (pluginName && !plugins.includes(pluginName)) {
-          plugins.push(pluginName);
-          console.log(`[AbletonScanner] DEBUG: Found plugin via pattern ${index + 1}: "${pluginName}"`);
+        if (cleanedPluginName && !plugins.includes(cleanedPluginName)) {
+          plugins.push(cleanedPluginName);
+          console.log(`[AbletonScanner] DEBUG: ACCEPTED plugin via pattern ${index + 1}: "${rawPluginName}" → "${cleanedPluginName}"`);
+        } else if (!cleanedPluginName) {
+          console.log(`[AbletonScanner] DEBUG: FILTERED OUT plugin: "${rawPluginName}" (cleaned to null)`);
         }
       }
       if (patternMatches > 0) {
@@ -198,10 +201,15 @@ class AbletonScanner {
     const simplePattern = /<PluginName[^>]*Value="([^"]*)"[^>]*\/>/g;
     let match;
     while ((match = simplePattern.exec(xmlString)) !== null) {
-      let pluginName = this.cleanPluginName(match[1]);
-      if (pluginName && !plugins.includes(pluginName)) {
-        plugins.push(pluginName);
-        console.log(`[AbletonScanner] DEBUG: Found plugin via simple pattern: "${pluginName}"`);
+      let rawPluginName = match[1];
+      console.log(`[AbletonScanner] DEBUG: Raw plugin name from simple pattern: "${rawPluginName}"`);
+      
+      let cleanedPluginName = this.cleanPluginName(rawPluginName);
+      if (cleanedPluginName && !plugins.includes(cleanedPluginName)) {
+        plugins.push(cleanedPluginName);
+        console.log(`[AbletonScanner] DEBUG: ACCEPTED plugin via simple pattern: "${rawPluginName}" → "${cleanedPluginName}"`);
+      } else if (!cleanedPluginName) {
+        console.log(`[AbletonScanner] DEBUG: FILTERED OUT plugin: "${rawPluginName}" (cleaned to null)`);
       }
     }
 
