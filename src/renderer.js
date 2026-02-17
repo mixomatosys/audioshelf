@@ -16,6 +16,7 @@ class AudioShelfApp {
   initializeUI() {
     // Get DOM elements
     this.scanButton = document.getElementById('scanButton');
+    this.exportButton = document.getElementById('exportButton');
     this.statusText = document.getElementById('statusText');
     this.pluginContainer = document.getElementById('pluginContainer');
     this.totalCount = document.getElementById('totalCount');
@@ -25,6 +26,7 @@ class AudioShelfApp {
 
     // Bind events
     this.scanButton.addEventListener('click', () => this.scanPlugins());
+    this.exportButton.addEventListener('click', () => this.exportPluginList());
 
     // Load existing plugins
     this.loadPlugins();
@@ -190,6 +192,53 @@ class AudioShelfApp {
         <p>${message}</p>
       </div>
     `;
+  }
+
+  exportPluginList() {
+    if (!this.plugins || this.plugins.length === 0) {
+      alert('No plugins found. Please scan first.');
+      return;
+    }
+
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      totalPlugins: this.plugins.length,
+      withMetadata: this.plugins.filter(p => p.hasMetadata).length,
+      needingMetadata: this.plugins.filter(p => p.needsMetadata).length,
+      plugins: this.plugins.map(plugin => ({
+        name: plugin.name,
+        vendor: plugin.vendor || 'Unknown',
+        category: plugin.category,
+        subcategory: plugin.subcategory,
+        formats: plugin.formats ? plugin.formats.map(f => f.format) : [plugin.format],
+        isDemo: plugin.isDemo,
+        hasMetadata: plugin.hasMetadata,
+        description: plugin.description,
+        tags: plugin.tags || []
+      }))
+    };
+
+    // Create downloadable file
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `audioshelf-plugins-${new Date().toISOString().split('T')[0]}.json`;
+    
+    // Auto-download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    this.updateStatus(`Exported ${this.plugins.length} plugins to JSON file`);
+    
+    // Also copy to clipboard for easy sharing
+    navigator.clipboard.writeText(JSON.stringify(exportData.plugins, null, 2)).then(() => {
+      console.log('Plugin list copied to clipboard!');
+    }).catch(() => {
+      console.log('Could not copy to clipboard, but file was downloaded');
+    });
   }
 }
 
