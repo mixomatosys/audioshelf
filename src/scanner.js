@@ -242,10 +242,16 @@ class PluginScanner {
   }
 
   consolidatePlugins(plugins) {
+    console.log('[Scanner] Consolidating plugins...');
     const pluginMap = new Map();
     
     for (const plugin of plugins) {
-      const key = `${plugin.name.toLowerCase()}-${plugin.vendor.toLowerCase()}`;
+      // More robust key generation - normalize names better
+      const normalizedName = plugin.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      const normalizedVendor = (plugin.vendor || 'unknown').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      const key = `${normalizedName}-${normalizedVendor}`;
+      
+      console.log(`[Scanner] Processing: ${plugin.name} (${plugin.format}) - Key: ${key}`);
       
       if (pluginMap.has(key)) {
         // Plugin already exists, add this format to it
@@ -257,6 +263,8 @@ class PluginScanner {
           modified: plugin.modified,
           isBundle: plugin.isBundle
         });
+        
+        console.log(`[Scanner] Merged with existing plugin, now has formats: ${existing.formats.map(f => f.format).join(', ')}`);
         
         // Update the main entry with the most recent scan info
         if (plugin.modified > existing.modified) {
@@ -282,8 +290,11 @@ class PluginScanner {
             isBundle: plugin.isBundle
           }]
         });
+        console.log(`[Scanner] Created new consolidated entry`);
       }
     }
+    
+    console.log(`[Scanner] Consolidation complete: ${plugins.length} plugins -> ${pluginMap.size} consolidated entries`);
     
     // Convert map back to array and sort by name
     return Array.from(pluginMap.values()).sort((a, b) => 
