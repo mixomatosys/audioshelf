@@ -154,34 +154,30 @@ class AbletonScanner {
   extractVSTPlugins(xmlString) {
     const plugins = [];
     
-    // DEBUG: Switch to looking for actually loaded plugins, not browser history
-    console.log('[AbletonScanner] DEBUG: Looking for actually LOADED plugins in PluginDevice elements...');
+    // DEBUG: Looking for ONLY loaded plugins (no browser history)
+    console.log('[AbletonScanner] DEBUG: Extracting from VstPluginInfo and Vst3PluginInfo ONLY...');
     
-    // Count different plugin-related elements to understand structure
-    const pluginDeviceCount = (xmlString.match(/<PluginDevice[^>]*>/g) || []).length;
+    // Count the plugin info elements we're actually using
     const vst3InfoCount = (xmlString.match(/<Vst3PluginInfo[^>]*>/g) || []).length;
     const vstInfoCount = (xmlString.match(/<VstPluginInfo[^>]*>/g) || []).length;
-    const browserPathCount = (xmlString.match(/<BrowserContentPath[^>]*>/g) || []).length;
     
-    console.log(`[AbletonScanner] DEBUG: Found ${pluginDeviceCount} PluginDevice, ${vst3InfoCount} Vst3PluginInfo, ${vstInfoCount} VstPluginInfo, ${browserPathCount} BrowserContentPath`);
+    console.log(`[AbletonScanner] DEBUG: Found ${vst3InfoCount} Vst3PluginInfo, ${vstInfoCount} VstPluginInfo elements`);
     
-    // If this project has lots of browser paths but few plugin devices, that explains the contamination
-    if (browserPathCount > pluginDeviceCount * 2) {
-      console.log(`[AbletonScanner] DEBUG: WARNING: ${browserPathCount} browser paths vs ${pluginDeviceCount} plugin devices - browser history contamination likely!`);
+    if (vst3InfoCount === 0 && vstInfoCount === 0) {
+      console.log(`[AbletonScanner] DEBUG: WARNING: No VstPluginInfo elements found - project may not use VST plugins`);
     }
     
-    // SIMPLE APPROACH: Find ANY VST plugin references, then filter out junk
-    // Cast a wide net, then clean up the results
+    // ONLY look for ACTUALLY LOADED plugins - NO browser history contamination
+    // Focus exclusively on VstPluginInfo and Vst3PluginInfo elements
     
     const vstPatterns = [
-      // VST3 plugin names from any context
+      // VST3 plugin names (actually loaded)
       /<Vst3PluginInfo[^>]*>[\s\S]*?<Name[^>]*Value="([^"]*)"[^>]*\/>/g,
       
-      // VST2 plugin filenames from any context
-      /<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>/g,
+      // VST2 plugin filenames (actually loaded)  
+      /<VstPluginInfo[^>]*>[\s\S]*?<FileName[^>]*Value="([^"]*)"[^>]*\/>/g
       
-      // Also check BrowserContentPath but filter heavily
-      /<BrowserContentPath[^>]*Value="query:Plugins#(?:VST3?|AU):[^:]*:([^"]*)"[^>]*\/>/g
+      // NO BrowserContentPath - that's browser history contamination!
     ];
 
     vstPatterns.forEach((pattern, index) => {
@@ -193,20 +189,9 @@ class AbletonScanner {
         let rawPluginName = match[1];
         console.log(`[AbletonScanner] DEBUG: Raw plugin name from pattern ${index + 1}: "${rawPluginName}"`);
         
-        let processedPluginName = rawPluginName;
-        
-        // URL decode if needed (for BrowserContentPath entries)
-        if (rawPluginName.includes('%')) {
-          try {
-            processedPluginName = decodeURIComponent(rawPluginName);
-          } catch (error) {
-            processedPluginName = rawPluginName; // Keep original if decode fails
-          }
-        }
-        
-        // Clean up the plugin name
-        let cleanedPluginName = this.cleanPluginName(processedPluginName);
-        console.log(`[AbletonScanner] DEBUG: Pattern ${index + 1} found: "${rawPluginName}" → "${processedPluginName}" → "${cleanedPluginName || 'FILTERED OUT'}"`);
+        // Clean up the plugin name (no URL decoding needed - no BrowserContentPath)
+        let cleanedPluginName = this.cleanPluginName(rawPluginName);
+        console.log(`[AbletonScanner] DEBUG: Pattern ${index + 1} found: "${rawPluginName}" → "${cleanedPluginName || 'FILTERED OUT'}"`);
         
         if (cleanedPluginName && !plugins.includes(cleanedPluginName)) {
           plugins.push(cleanedPluginName);
