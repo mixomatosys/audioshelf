@@ -39,9 +39,10 @@ class Database {
           hostname: os.hostname(),
           totalPlugins: plugins.length,
           pluginCounts: {
-            vst: plugins.filter(p => p.format === 'VST').length,
-            vst3: plugins.filter(p => p.format === 'VST3').length,
-            au: plugins.filter(p => p.format === 'AU').length
+            vst: this.countPluginsByFormat(plugins, 'VST'),
+            vst3: this.countPluginsByFormat(plugins, 'VST3'),
+            au: this.countPluginsByFormat(plugins, 'AU'),
+            uniquePlugins: plugins.length
           }
         }
       };
@@ -83,14 +84,32 @@ class Database {
     const verified = [];
 
     for (const plugin of plugins) {
-      try {
-        await fs.access(plugin.path);
-        plugin.installed = true;
+      // For consolidated plugins, check each format path
+      if (plugin.formats && Array.isArray(plugin.formats)) {
+        let anyInstalled = false;
+        for (const format of plugin.formats) {
+          try {
+            await fs.access(format.path);
+            format.installed = true;
+            anyInstalled = true;
+          } catch (error) {
+            console.warn(`[Database] Plugin format no longer exists: ${plugin.name} (${format.format}) at ${format.path}`);
+            format.installed = false;
+          }
+        }
+        plugin.installed = anyInstalled;
         verified.push(plugin);
-      } catch (error) {
-        console.warn(`[Database] Plugin no longer exists: ${plugin.name} at ${plugin.path}`);
-        plugin.installed = false;
-        verified.push(plugin); // Keep in database but mark as missing
+      } else {
+        // Legacy single-format plugin
+        try {
+          await fs.access(plugin.path);
+          plugin.installed = true;
+          verified.push(plugin);
+        } catch (error) {
+          console.warn(`[Database] Plugin no longer exists: ${plugin.name} at ${plugin.path}`);
+          plugin.installed = false;
+          verified.push(plugin);
+        }
       }
     }
 
@@ -100,6 +119,19 @@ class Database {
     console.log(`[Database] Verification complete: ${installedCount} installed, ${missingCount} missing`);
     
     return verified;
+  }
+
+  countPluginsByFormat(plugins, targetFormat) {
+    let count = 0;
+    plugins.forEach(plugin => {
+      if (plugin.formats && Array.isArray(plugin.formats)) {
+        count += plugin.formats.filter(f => f.format === targetFormat).length;
+      } else if (plugin.format === targetFormat) {
+        // Legacy single-format support
+        count++;
+      }
+    });
+    return count;
   }
 
   async getMetadata() {
@@ -182,9 +214,9 @@ class Database {
         installedPlugins: plugins.filter(p => p.installed).length,
         missingPlugins: plugins.filter(p => !p.installed).length,
         formats: {
-          vst: plugins.filter(p => p.format === 'VST').length,
-          vst3: plugins.filter(p => p.format === 'VST3').length,
-          au: plugins.filter(p => p.format === 'AU').length
+          vst: this.countPluginsByFormat(plugins, 'VST'),
+          vst3: this.countPluginsByFormat(plugins, 'VST3'),
+          au: this.countPluginsByFormat(plugins, 'AU')
         },
         categories: {},
         lastScan: metadata.lastScan || null,

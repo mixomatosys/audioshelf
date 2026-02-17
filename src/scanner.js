@@ -78,8 +78,10 @@ class PluginScanner {
         allPlugins.push(...auPlugins);
       }
 
-      console.log(`[Scanner] Found ${allPlugins.length} plugins total`);
-      return allPlugins;
+      // Consolidate plugins by name (combine different formats of the same plugin)
+      const consolidatedPlugins = this.consolidatePlugins(allPlugins);
+      console.log(`[Scanner] Found ${allPlugins.length} plugin installations, ${consolidatedPlugins.length} unique plugins`);
+      return consolidatedPlugins;
 
     } catch (error) {
       console.error('[Scanner] Scan failed:', error);
@@ -237,6 +239,56 @@ class PluginScanner {
     // Try to extract from filename (e.g., "Serum_x64.dll" -> "Serum")
     const match = filename.match(/^([A-Za-z]+)/);
     return match ? match[1] : 'Unknown';
+  }
+
+  consolidatePlugins(plugins) {
+    const pluginMap = new Map();
+    
+    for (const plugin of plugins) {
+      const key = `${plugin.name.toLowerCase()}-${plugin.vendor.toLowerCase()}`;
+      
+      if (pluginMap.has(key)) {
+        // Plugin already exists, add this format to it
+        const existing = pluginMap.get(key);
+        existing.formats.push({
+          format: plugin.format,
+          path: plugin.path,
+          size: plugin.size,
+          modified: plugin.modified,
+          isBundle: plugin.isBundle
+        });
+        
+        // Update the main entry with the most recent scan info
+        if (plugin.modified > existing.modified) {
+          existing.modified = plugin.modified;
+          existing.scanDate = plugin.scanDate;
+        }
+      } else {
+        // New plugin, create consolidated entry
+        pluginMap.set(key, {
+          id: plugin.id,
+          name: plugin.name,
+          vendor: plugin.vendor,
+          version: plugin.version,
+          category: plugin.category,
+          installed: plugin.installed,
+          modified: plugin.modified,
+          scanDate: plugin.scanDate,
+          formats: [{
+            format: plugin.format,
+            path: plugin.path,
+            size: plugin.size,
+            modified: plugin.modified,
+            isBundle: plugin.isBundle
+          }]
+        });
+      }
+    }
+    
+    // Convert map back to array and sort by name
+    return Array.from(pluginMap.values()).sort((a, b) => 
+      a.name.localeCompare(b.name)
+    );
   }
 
   guessCategory(filename) {

@@ -79,11 +79,23 @@ class AudioShelfApp {
   }
 
   updateUI() {
-    // Update statistics
+    // Update statistics - count total format instances
+    let vstCount = 0, vst3Count = 0, auCount = 0;
+    
+    this.plugins.forEach(plugin => {
+      plugin.formats.forEach(format => {
+        switch(format.format) {
+          case 'VST': vstCount++; break;
+          case 'VST3': vst3Count++; break;
+          case 'AU': auCount++; break;
+        }
+      });
+    });
+
     this.totalCount.textContent = this.plugins.length;
-    this.vstCount.textContent = this.plugins.filter(p => p.format === 'VST').length;
-    this.vst3Count.textContent = this.plugins.filter(p => p.format === 'VST3').length;
-    this.auCount.textContent = this.plugins.filter(p => p.format === 'AU').length;
+    this.vstCount.textContent = vstCount;
+    this.vst3Count.textContent = vst3Count;
+    this.auCount.textContent = auCount;
 
     // Update plugin list
     if (this.plugins.length === 0) {
@@ -99,21 +111,43 @@ class AudioShelfApp {
   }
 
   renderPluginList() {
-    const pluginHTML = this.plugins.map(plugin => `
-      <div class="plugin-item">
-        <div class="plugin-name">${plugin.name}</div>
-        <div class="plugin-info">
-          ${plugin.vendor || 'Unknown Vendor'} • 
-          ${plugin.format} • 
-          v${plugin.version || '?'} • 
-          <span style="color: ${plugin.installed ? '#4CAF50' : '#f44336'}">
-            ${plugin.installed ? '✅ Installed' : '❌ Missing'}
-          </span>
+    const pluginHTML = this.plugins.map(plugin => {
+      // Create format badges
+      const formatBadges = plugin.formats.map(format => {
+        const badgeColor = this.getFormatColor(format.format);
+        return `<span style="background: ${badgeColor}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-right: 4px;">${format.format}</span>`;
+      }).join('');
+
+      // Determine overall install status
+      const allInstalled = plugin.formats.every(f => plugin.installed);
+      const statusColor = allInstalled ? '#4CAF50' : '#f44336';
+      const statusText = allInstalled ? '✅ Installed' : '❌ Missing';
+
+      return `
+        <div class="plugin-item">
+          <div class="plugin-name">${plugin.name}</div>
+          <div class="plugin-info">
+            ${plugin.vendor || 'Unknown Vendor'} • 
+            ${formatBadges} • 
+            v${plugin.version || '?'} • 
+            <span style="color: ${statusColor}">
+              ${statusText}
+            </span>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     this.pluginContainer.innerHTML = pluginHTML;
+  }
+
+  getFormatColor(format) {
+    switch(format) {
+      case 'VST': return '#FF6B35';   // Orange
+      case 'VST3': return '#4CAF50';  // Green  
+      case 'AU': return '#2196F3';    // Blue
+      default: return '#757575';      // Gray
+    }
   }
 
   updateStatus(message) {
