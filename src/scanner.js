@@ -242,20 +242,57 @@ class PluginScanner {
   }
 
   consolidatePlugins(plugins) {
-    console.log('[Scanner] Consolidating plugins...');
+    console.log(`[Scanner] ==========================================`);
+    console.log(`[Scanner] Starting consolidation of ${plugins.length} plugins...`);
+    console.log(`[Scanner] ==========================================`);
+    
     const pluginMap = new Map();
     
-    for (const plugin of plugins) {
-      // More robust key generation - normalize names better
-      const normalizedName = plugin.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-      const normalizedVendor = (plugin.vendor || 'unknown').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-      const key = `${normalizedName}-${normalizedVendor}`;
+    // Helper function to normalize plugin names for consolidation
+    const normalizePluginName = (name) => {
+      const original = name;
+      let normalized = name
+        // Remove common vendor prefixes
+        .replace(/^(UAD\s+|iZotope\s+|Native Instruments\s+)/i, '')
+        // Remove format indicators
+        .replace(/\s*\((VST3?|AU)\)\s*/g, '')
+        // Remove [Bundle] or [File] indicators  
+        .replace(/\s*\[Bundle\]\s*|\s*\[File\]\s*/g, '')
+        // Normalize whitespace and special characters but keep some structure
+        .replace(/\s+/g, ' ')
+        .replace(/[^\w\s\-\.]/g, '')
+        .trim()
+        .toLowerCase();
       
-      console.log(`[Scanner] Processing: ${plugin.name} (${plugin.format}) - Key: ${key}`);
+      if (original !== normalized) {
+        console.log(`[Scanner]   Name normalization: "${original}" -> "${normalized}"`);
+      }
+      return normalized;
+    };
+    
+    // Show all plugins first for debugging
+    console.log(`[Scanner] All plugins to process:`);
+    plugins.forEach((plugin, index) => {
+      console.log(`[Scanner]   ${index + 1}. "${plugin.name}" (${plugin.format}) vendor: "${plugin.vendor || 'unknown'}"`);
+    });
+    console.log(`[Scanner] ==========================================`);
+    
+    for (const plugin of plugins) {
+      const normalizedName = normalizePluginName(plugin.name);
+      const normalizedVendor = (plugin.vendor || 'unknown').toLowerCase().trim();
+      const key = `${normalizedName}|${normalizedVendor}`;
+      
+      console.log(`[Scanner] Processing: "${plugin.name}" (${plugin.format})`);
+      console.log(`[Scanner]   Original vendor: "${plugin.vendor || 'unknown'}"`);
+      console.log(`[Scanner]   Normalized vendor: "${normalizedVendor}"`);
+      console.log(`[Scanner]   Final key: "${key}"`);
       
       if (pluginMap.has(key)) {
         // Plugin already exists, add this format to it
         const existing = pluginMap.get(key);
+        console.log(`[Scanner]   🎯 MATCH FOUND! Merging with existing plugin.`);
+        console.log(`[Scanner]   Existing formats: [${existing.formats.map(f => f.format).join(', ')}]`);
+        
         existing.formats.push({
           format: plugin.format,
           path: plugin.path,
@@ -264,7 +301,7 @@ class PluginScanner {
           isBundle: plugin.isBundle
         });
         
-        console.log(`[Scanner] Merged with existing plugin, now has formats: ${existing.formats.map(f => f.format).join(', ')}`);
+        console.log(`[Scanner]   ✅ Merged! Now has formats: [${existing.formats.map(f => f.format).join(', ')}]`);
         
         // Update the main entry with the most recent scan info
         if (plugin.modified > existing.modified) {
@@ -273,6 +310,16 @@ class PluginScanner {
         }
       } else {
         // New plugin, create consolidated entry
+        console.log(`[Scanner]   ➕ Creating new entry (no existing match for key: "${key}")`);
+        
+        // Show what keys already exist for debugging
+        if (pluginMap.size > 0) {
+          console.log(`[Scanner]   Existing keys in map:`);
+          Array.from(pluginMap.keys()).forEach((existingKey, index) => {
+            console.log(`[Scanner]     ${index + 1}. "${existingKey}"`);
+          });
+        }
+        
         pluginMap.set(key, {
           id: plugin.id,
           name: plugin.name,
@@ -290,11 +337,13 @@ class PluginScanner {
             isBundle: plugin.isBundle
           }]
         });
-        console.log(`[Scanner] Created new consolidated entry`);
+        console.log(`[Scanner]   ✅ New entry created with 1 format: [${plugin.format}]`);
       }
+      console.log(`[Scanner] ----------------------------------------`);
     }
     
-    console.log(`[Scanner] Consolidation complete: ${plugins.length} plugins -> ${pluginMap.size} consolidated entries`);
+    const consolidatedCount = pluginMap.size;
+    console.log(`[Scanner] ✓ Consolidation complete: ${plugins.length} installations -> ${consolidatedCount} unique plugins`);
     
     // Convert map back to array and sort by name
     return Array.from(pluginMap.values()).sort((a, b) => 
