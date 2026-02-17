@@ -47,7 +47,7 @@ class AudioShelfApp {
     this.vendorFilter.addEventListener('change', () => this.applyFilters());
     this.formatFilter.addEventListener('change', () => this.applyFilters());
     this.categoryFilter.addEventListener('change', () => this.applyFilters());
-    this.searchFilter.addEventListener('input', () => this.applyFilters());
+    this.globalSearchInput.addEventListener('input', () => this.applyFilters());
     this.clearFilters.addEventListener('click', () => this.clearAllFilters());
 
     // Load existing plugins
@@ -156,7 +156,7 @@ class AudioShelfApp {
     }
     
     // Apply search filter
-    const searchValue = this.searchFilter.value.toLowerCase();
+    const searchValue = this.globalSearchInput.value.toLowerCase();
     if (searchValue) {
       filtered = filtered.filter(p =>
         p.name.toLowerCase().includes(searchValue) ||
@@ -208,13 +208,17 @@ class AudioShelfApp {
     this.vstCount.textContent = vstCount;
     this.vst3Count.textContent = vst3Count;
     this.auCount.textContent = auCount;
+    
+    // Update header stats
+    this.headerTotalCount.textContent = this.plugins.length;
+    this.headerVisibleCount.textContent = pluginsToCount.length;
   }
 
   clearAllFilters() {
     this.vendorFilter.value = '';
     this.formatFilter.value = '';
     this.categoryFilter.value = '';
-    this.searchFilter.value = '';
+    this.globalSearchInput.value = '';
     this.applyFilters();
   }
 
