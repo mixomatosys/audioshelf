@@ -163,6 +163,14 @@ class AbletonScanner {
     
     console.log(`[AbletonScanner] DEBUG: Found ${vst3InfoCount} Vst3PluginInfo, ${vstInfoCount} VstPluginInfo elements`);
     
+    // DEBUG: Show actual XML structure of first Vst3PluginInfo to understand format
+    if (vst3InfoCount > 0) {
+      const vst3Sample = xmlString.match(/<Vst3PluginInfo[^>]*>[\s\S]{0,500}?<\/Vst3PluginInfo>/);
+      if (vst3Sample) {
+        console.log(`[AbletonScanner] DEBUG: Sample Vst3PluginInfo XML structure:`, vst3Sample[0]);
+      }
+    }
+    
     if (vst3InfoCount === 0 && vstInfoCount === 0) {
       console.log(`[AbletonScanner] DEBUG: WARNING: No VstPluginInfo elements found - project may not use VST plugins`);
     }
