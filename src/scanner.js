@@ -279,20 +279,10 @@ class PluginScanner {
     
     for (const plugin of plugins) {
       const normalizedName = normalizePluginName(plugin.name);
-      const normalizedVendor = (plugin.vendor || 'unknown').toLowerCase().trim();
-      
-      // If vendor looks like a filename (contains extension), ignore it for consolidation
-      const vendorLooksLikeFilename = normalizedVendor.includes('.vst') || 
-                                     normalizedVendor.includes('.component') ||
-                                     normalizedVendor.includes('.dll');
-      
-      const key = vendorLooksLikeFilename ? normalizedName : `${normalizedName}|${normalizedVendor}`;
+      const key = normalizedName; // Simple: just use the plugin name for consolidation
       
       console.log(`[Scanner] Processing: "${plugin.name}" (${plugin.format})`);
-      console.log(`[Scanner]   Original vendor: "${plugin.vendor || 'unknown'}"`);
-      console.log(`[Scanner]   Normalized vendor: "${normalizedVendor}"`);
-      console.log(`[Scanner]   Vendor looks like filename: ${vendorLooksLikeFilename}`);
-      console.log(`[Scanner]   Final key: "${key}"`);
+      console.log(`[Scanner]   Consolidation key: "${key}"`);
       
       if (pluginMap.has(key)) {
         // Plugin already exists, add this format to it
