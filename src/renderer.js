@@ -18,7 +18,7 @@ class AudioShelfApp {
   initializeUI() {
     // Get DOM elements
     this.scanButton = document.getElementById('scanButton');
-    this.scanAbletonButton = document.getElementById('scanAbletonButton');
+    // this.scanAbletonButton = document.getElementById('scanAbletonButton');
     this.exportButton = document.getElementById('exportButton');
     this.statusText = document.getElementById('statusText');
     this.pluginContainer = document.getElementById('pluginContainer');
@@ -37,7 +37,7 @@ class AudioShelfApp {
 
     // Bind events
     this.scanButton.addEventListener('click', () => this.scanPlugins());
-    this.scanAbletonButton.addEventListener('click', () => this.scanAbletonProjects());
+    // this.scanAbletonButton.addEventListener('click', () => this.scanAbletonProjects());
     this.exportButton.addEventListener('click', () => this.exportPluginList());
     
     // Filter events
