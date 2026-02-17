@@ -289,7 +289,28 @@ class Database {
       pluginUsage[plugin.id] = [];
     });
 
+    // DEBUG: Collect all unique plugin names from Ableton projects
+    const abletonPluginNames = new Set();
+    projects.forEach(project => {
+      project.vstPlugins.forEach(name => abletonPluginNames.add(name));
+    });
+    
+    console.log(`[Database] DEBUG: Found ${abletonPluginNames.size} unique plugin names in Ableton projects:`);
+    const sortedAbletonNames = Array.from(abletonPluginNames).sort();
+    sortedAbletonNames.slice(0, 20).forEach(name => {
+      console.log(`[Database] DEBUG: Ableton plugin: "${name}"`);
+    });
+    if (sortedAbletonNames.length > 20) {
+      console.log(`[Database] DEBUG: ... and ${sortedAbletonNames.length - 20} more`);
+    }
+    
+    console.log(`[Database] DEBUG: AudioShelf database has ${plugins.length} plugins. First 10:`);
+    plugins.slice(0, 10).forEach(plugin => {
+      console.log(`[Database] DEBUG: AudioShelf plugin: "${plugin.name}" (vendor: ${plugin.vendor || 'Unknown'})`);
+    });
+
     // Process each project
+    let totalMatches = 0;
     projects.forEach(project => {
       project.vstPlugins.forEach(abletonPluginName => {
         // Try to match this Ableton plugin name to a plugin in our database
@@ -298,6 +319,7 @@ class Database {
         );
         
         if (matchedPlugin) {
+          totalMatches++;
           // Add this project to the plugin's usage list
           if (!pluginUsage[matchedPlugin.id]) {
             pluginUsage[matchedPlugin.id] = [];
@@ -308,6 +330,13 @@ class Database {
             projectFile: project.fileName,
             lastModified: project.lastModified
           });
+          
+          console.log(`[Database] DEBUG: MATCH FOUND! Ableton "${abletonPluginName}" matched AudioShelf "${matchedPlugin.name}"`);
+        } else {
+          // DEBUG: Show failed matches for first few
+          if (totalMatches < 5) {
+            console.log(`[Database] DEBUG: NO MATCH for Ableton plugin: "${abletonPluginName}"`);
+          }
         }
       });
     });
@@ -318,7 +347,8 @@ class Database {
       projectUsage: pluginUsage[plugin.id] || []
     }));
 
-    console.log(`[Database] Linked projects to plugins. Found usage data for ${Object.values(pluginUsage).filter(usage => usage.length > 0).length} plugins`);
+    const pluginsWithUsageCount = Object.values(pluginUsage).filter(usage => usage.length > 0).length;
+    console.log(`[Database] Linked projects to plugins. Found usage data for ${pluginsWithUsageCount} plugins (${totalMatches} total matches)`);
     
     return pluginsWithUsage;
   }
