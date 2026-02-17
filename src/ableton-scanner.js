@@ -77,11 +77,23 @@ class AbletonScanner {
       const xmlData = await gunzip(compressedData);
       const xmlString = xmlData.toString('utf-8');
 
-      // DEBUG: Show XML structure for first project
-      if (alsFilePath.includes('spring walk')) {
-        console.log('[AbletonScanner] DEBUG: Sample XML structure (first 2000 chars):');
-        console.log(xmlString.substring(0, 2000));
-        console.log('[AbletonScanner] DEBUG: ...searching for plugin patterns in full XML...');
+      // DEBUG: Show VST plugin XML structure for projects with VST info
+      if (alsFilePath.includes('Intrigue and the Beacon')) {
+        console.log('[AbletonScanner] DEBUG: Looking for VST plugin XML structure...');
+        
+        // Find and show actual Vst3PluginInfo sections
+        const vst3Matches = xmlString.match(/<Vst3PluginInfo[^>]*>[\s\S]{0,500}?<\/Vst3PluginInfo>/g);
+        if (vst3Matches) {
+          console.log(`[AbletonScanner] DEBUG: Found ${vst3Matches.length} Vst3PluginInfo sections. First one:`);
+          console.log(vst3Matches[0]);
+        }
+        
+        // Find PluginDevice sections
+        const pluginDeviceMatches = xmlString.match(/<PluginDevice[^>]*>[\s\S]{0,800}?<\/PluginDevice>/g);
+        if (pluginDeviceMatches) {
+          console.log(`[AbletonScanner] DEBUG: Found ${pluginDeviceMatches.length} PluginDevice sections. First one:`);
+          console.log(pluginDeviceMatches[0]);
+        }
       }
 
       // Extract project info
